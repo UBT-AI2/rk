@@ -31,6 +31,7 @@
 #include "methods.h"
 #include "threads.h"
 #include "tools.h"
+#include "block-inline.h"
 
 /******************************************************************************/
 

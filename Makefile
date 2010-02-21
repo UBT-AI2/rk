@@ -34,7 +34,7 @@ MPIDIR  	= $(SRCDIR)/impl/$(PREFIX_MPI)
 
 CC      = gcc
 MPIC    = mpicc
-CFLAGS  = -I$(INCDIR) -D_REENTRANT -Wall -O3
+CFLAGS  = -I$(INCDIR) -D_REENTRANT -Wall -O3 -g
 LDFLAGS = -lpthread -lm
 MAKEDEP = $(CC) $(CFLAGS) -MM -MG
 
