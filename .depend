@@ -1,0 +1,35 @@
+src/impl/seq/D.o: src/impl/seq/D.c include/solver.h include/config.h include/ode.h \
+  include/methods.h include/tools.h include/threads.h
+
+src/impl/seq/PipeD.o: src/impl/seq/PipeD.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  include/pipe-inline.h
+
+src/impl/seq/PipeDls.o: src/impl/seq/PipeDls.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  include/pipe-inline.h
+
+src/problems/bruss2d-mix.o: src/problems/bruss2d-mix.c include/ode.h include/config.h
+
+src/main.o: src/main.c include/config.h include/ode.h include/config.h \
+  include/solver.h include/ode.h include/methods.h include/tools.h \
+  include/threads.h include/tools.h
+
+src/methods.o: src/methods.c include/methods.h include/tools.h \
+  include/config.h
+
+src/threads.o: src/threads.c include/threads.h include/config.h \
+  include/tools.h
+
+src/tools.o: src/tools.c include/solver.h include/config.h include/ode.h \
+  include/methods.h include/tools.h include/threads.h
+
+bin/seq_bruss2d-mix_D: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/seq/D.o src/problems/bruss2d-mix.o
+
+bin/seq_bruss2d-mix_PipeD: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/seq/PipeD.o src/problems/bruss2d-mix.o
+
+bin/seq_bruss2d-mix_PipeDls: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/seq/PipeDls.o src/problems/bruss2d-mix.o
+

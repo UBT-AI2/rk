@@ -1,0 +1,6 @@
+*~
+*.o
+*.flc
+.project
+.cproject
+bin/*
