@@ -30,6 +30,8 @@ SEQDIR  	= $(SRCDIR)/impl/$(PREFIX_SEQ)
 PTHDIR  	= $(SRCDIR)/impl/$(PREFIX_PTH)
 MPIDIR  	= $(SRCDIR)/impl/$(PREFIX_MPI)
 
+DEPFILE         = .depend
+
 ################################################################################
 
 CC      = gcc
@@ -108,31 +110,31 @@ dep:
   echo -n "$$(dirname $$i)/" ; \
   $(MAKEDEP) $$i; \
   echo ; \
-done > .depend
+done > $(DEPFILE)
 		for i in $(IMPL_SEQ); do \
   for p in $(PROBLEMS); do \
     echo "bin/$(PREFIX_SEQ)_$${p}_$${i}: $(OTHER_OBJECTS) \\" ; \
     echo "  $(SEQDIR)/$$i.o $(PROBDIR)/$$p.o" ; \
     echo ; \
   done ; \
-done >> .depend
+done >> $(DEPFILE)
 		for i in $(IMPL_PTH); do \
   for p in $(PROBLEMS); do \
     echo "bin/$(PREFIX_PTH)_$${p}_$${i}: $(OTHER_OBJECTS) \\" ; \
     echo "  $(PTHDIR)/$$i.o $(PROBDIR)/$$p.o" ; \
     echo ; \
   done ; \
-done >> .depend
+done >> $(DEPFILE)
 		for i in $(IMPL_MPI); do \
   for p in $(PROBLEMS); do \
     echo "bin/$(PREFIX_MPI)_$${p}_$${i}: $(OTHER_OBJECTS) \\" ; \
     echo "  $(MPIDIR)/$$i.o $(PROBDIR)/$$p.o" ; \
     echo ; \
   done ; \
-done >> .depend
+done >> $(DEPFILE)
 
 ################################################################################
 
-include .depend
+-include $(DEPFILE)
 
 ################################################################################
