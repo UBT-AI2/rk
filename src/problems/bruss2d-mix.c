@@ -1,6 +1,6 @@
 /******************************************************************************/
 /* This file is part of a collection of embedded Runge-Kutta solvers.         */
-/* Copyright (C) 2009, Matthias Korch, University of Bayreuth, Germany.       */
+/* Copyright (C) 2009-2010, Matthias Korch, University of Bayreuth, Germany.  */
 /*                                                                            */
 /* This is free software; you can redistribute it and/or modify it under the  */
 /* terms of the GNU General Public License as published by the Free Software  */
