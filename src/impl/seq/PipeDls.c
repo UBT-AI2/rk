@@ -28,7 +28,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   double **A, *b, *b_hat, *bbs, *c;
   double err_max;
   int s, ord;
-  double h, t, H = te - t0;
+  double h, t;
   double timer;
   int steps_acc = 0, steps_rej = 0;
 
@@ -54,7 +54,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   y_old = dy;
 
-  h = initial_stepsize(t0, H, y0, ord, tol);
+  h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
   copy_vector(y, y0, ode_size);
 
