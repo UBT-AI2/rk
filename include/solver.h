@@ -25,6 +25,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "config.h"
 #include "ode.h"
