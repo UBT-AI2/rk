@@ -29,7 +29,7 @@
 
 static inline void block_first_stage(int first, int size, int s, double t,
                                      double h, double **A, double *b,
-                                     double *bbs, double *c, double *y,
+                                     double *b_hat, double *c, double *y,
                                      double *err, double *dy, double **w)
 {
   int j, l;
@@ -43,7 +43,7 @@ static inline void block_first_stage(int first, int size, int s, double t,
       w[l][j] = Y + A[l][0] * hF;
 
     dy[j] = b[0] * hF;
-    err[j] = bbs[0] * hF;
+    err[j] = b_hat[0] * hF;
   }
 }
 
@@ -51,7 +51,7 @@ static inline void block_first_stage(int first, int size, int s, double t,
 
 static inline void block_interm_stage(int i, int first, int size, int s,
                                       double t, double h, double **A, double *b,
-                                      double *bbs, double *c, double *y,
+                                      double *b_hat, double *c, double *y,
                                       double *err, double *dy, double **w)
 {
   int j, l;
@@ -64,7 +64,7 @@ static inline void block_interm_stage(int i, int first, int size, int s,
       w[l][j] += A[l][i] * hF;
 
     dy[j] += b[i] * hF;
-    err[j] += bbs[i] * hF;
+    err[j] += b_hat[i] * hF;
   }
 }
 
@@ -72,7 +72,7 @@ static inline void block_interm_stage(int i, int first, int size, int s,
 
 static inline void block_last_stage(int first, int size, int s,
                                     double t, double h, double *b,
-                                    double *bbs, double *c, double *y,
+                                    double *b_hat, double *c, double *y,
                                     double *err, double *dy,
                                     double **w, double *err_max)
 {
@@ -84,7 +84,7 @@ static inline void block_last_stage(int first, int size, int s,
     double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
 
     dy[j] += b[i] * hF;
-    err[j] += bbs[i] * hF;
+    err[j] += b_hat[i] * hF;
 
     yj_old = y[j];
     y[j] += h * dy[j];

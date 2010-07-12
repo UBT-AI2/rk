@@ -25,7 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 {
   int i;
   double **w, *y_old, *err, *dy;
-  double **A, *b, *b_hat, *bbs, *c;
+  double **A, *b, *b_hat, *c;
   double err_max;
   int s, ord;
   double h, t;
@@ -37,9 +37,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   METHOD(&A, &b, &b_hat, &c, &s, &ord);
 
-  bbs = MALLOC(s, double);
+  b_hat = MALLOC(s, double);
   for (i = 0; i < s; i++)
-    bbs[i] = b[i] - b_hat[i];
+    b_hat[i] = b[i] - b_hat[i];
 
   ALLOC2D(w, s, ode_size, double);
 
@@ -60,12 +60,12 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     err_max = 0.0;
 
-    block_first_stage(0, ode_size, s, t, h, A, b, bbs, c, y, err, dy, w);
+    block_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy, w);
 
     for (i = 1; i < s - 1; i++)
-      block_interm_stage(i, 0, ode_size, s, t, h, A, b, bbs, c, y, err, dy, w);
+      block_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy, w);
 
-    block_last_stage(0, ode_size, s, t, h, b, bbs, c, y, err, dy, w, &err_max);
+    block_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
 
     /* step control */
 
@@ -83,7 +83,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE(err);
   FREE(dy);
 
-  FREE(bbs);
+  FREE(b_hat);
 
   print_statistics(timer, steps_acc, steps_rej);
 }

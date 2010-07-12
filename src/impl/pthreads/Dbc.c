@@ -28,7 +28,7 @@ typedef struct
   double *y, *y0, **w;
   double *err, *dy;
 
-  double **A, *b, *bbs, *c;
+  double **A, *b, *b_hat, *c;
   int s, ord;
 
   int *first, *size;
@@ -54,7 +54,7 @@ typedef struct
 void *solver_thread(void *argument)
 {
   double **w, *y, *y0, *y_old, *err, *dy;
-  double **A, *b, *bbs, *c;
+  double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
   int i, s, ord, first, last, size, me;
   int steps_acc = 0, steps_rej = 0;
@@ -78,7 +78,7 @@ void *solver_thread(void *argument)
 
   A = shared->A;
   b = shared->b;
-  bbs = shared->bbs;
+  b_hat = shared->b_hat;
   c = shared->c;
 
   s = shared->s;
@@ -118,18 +118,18 @@ void *solver_thread(void *argument)
     /* evaluate the inner blocks of the first stage */
 
     block_first_stage(first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, A, b,
-                      bbs, c, y, err, dy, w);
+                      b_hat, c, y, err, dy, w);
 
     /* evaluate first block of the first stage and send result to the
        previous processor */
 
-    block_first_stage(first, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy, w);
+    block_first_stage(first, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
     first_block_complete(me, 1, mutex_first);
 
     /* evaluate last block of the second stage and send result to the
        next processor */
 
-    block_first_stage(last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b, bbs, c, y,
+    block_first_stage(last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
                       err, dy, w);
     last_block_complete(me, 1, mutex_last);
 
@@ -138,13 +138,13 @@ void *solver_thread(void *argument)
       /* evaluate the inner blocks of stage i */
 
       block_interm_stage(i, first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, A,
-                         b, bbs, c, y, err, dy, w);
+                         b, b_hat, c, y, err, dy, w);
 
       /* evaluate first block of stage i and send result to the
          previous processor */
 
       wait_for_pred(me, i, mutex_last);
-      block_interm_stage(i, first, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy,
+      block_interm_stage(i, first, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
                          w);
       first_block_complete(me, i + 1, mutex_first);
       release_pred(me, i, mutex_last);
@@ -153,7 +153,7 @@ void *solver_thread(void *argument)
          processor */
 
       wait_for_succ(me, i, mutex_first);
-      block_interm_stage(i, last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b, bbs,
+      block_interm_stage(i, last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b, b_hat,
                          c, y, err, dy, w);
       last_block_complete(me, i + 1, mutex_last);
       release_succ(me, i, mutex_first);
@@ -161,20 +161,20 @@ void *solver_thread(void *argument)
 
     /* evaluate the inner blocks of stage s - 1 */
 
-    block_last_stage(first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, b, bbs,
+    block_last_stage(first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, b, b_hat,
                      c, y, err, dy, w, &err_max);
 
     /* evaluate first block of stage s - 1 */
 
     wait_for_pred(me, s - 1, mutex_last);
-    block_last_stage(first, BLOCKSIZE, s, t, h, b, bbs, c, y, err, dy, w,
+    block_last_stage(first, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
                      &err_max);
     release_pred(me, s - 1, mutex_last);
 
     /* evaluate last block of stage s - 1 */
 
     wait_for_succ(me, s - 1, mutex_first);
-    block_last_stage(last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b, bbs, c, y,
+    block_last_stage(last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b, b_hat, c, y,
                      err, dy, w, &err_max);
     release_succ(me, s - 1, mutex_first);
 
@@ -229,9 +229,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->b = b;
   shared->c = c;
 
-  shared->bbs = MALLOC(s, double);
+  shared->b_hat = MALLOC(s, double);
   for (i = 0; i < s; i++)
-    shared->bbs[i] = b[i] - b_hat[i];
+    shared->b_hat[i] = b[i] - b_hat[i];
 
   shared->s = s;
   shared->ord = ord;
@@ -284,7 +284,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   reduction_destroy(&shared->reduction);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
-  FREE(shared->bbs);
+  FREE(shared->b_hat);
 
   FREE2D(shared->w);
   FREE(shared->err);

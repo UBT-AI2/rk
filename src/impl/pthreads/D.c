@@ -28,7 +28,7 @@ typedef struct
   double *y, *y0, **w;
   double *err, *dy;
 
-  double **A, *b, *bbs, *c;
+  double **A, *b, *b_hat, *c;
   int s, ord;
 
   int *first, *size;
@@ -51,7 +51,7 @@ typedef struct
 void *solver_thread(void *argument)
 {
   double **w, *y, *y0, *y_old, *err, *dy;
-  double **A, *b, *bbs, *c;
+  double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
   int i, s, ord, first, last, size, me;
   int steps_acc = 0, steps_rej = 0;
@@ -74,7 +74,7 @@ void *solver_thread(void *argument)
 
   A = shared->A;
   b = shared->b;
-  bbs = shared->bbs;
+  b_hat = shared->b_hat;
   c = shared->c;
 
   s = shared->s;
@@ -105,16 +105,16 @@ void *solver_thread(void *argument)
 
     err_max = 0.0;
 
-    block_first_stage(first, size, s, t, h, A, b, bbs, c, y, err, dy, w);
+    block_first_stage(first, size, s, t, h, A, b, b_hat, c, y, err, dy, w);
 
     for (i = 1; i < s - 1; i++)
     {
       barrier_wait(bar);
-      block_interm_stage(i, first, size, s, t, h, A, b, bbs, c, y, err, dy, w);
+      block_interm_stage(i, first, size, s, t, h, A, b, b_hat, c, y, err, dy, w);
     }
 
     barrier_wait(bar);
-    block_last_stage(first, size, s, t, h, b, bbs, c, y, err, dy, w, &err_max);
+    block_last_stage(first, size, s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
 
     printf("e[%d]: %e\n", me, err_max);
     err_max = reduction_max(red, err_max);
@@ -168,9 +168,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->b = b;
   shared->c = c;
 
-  shared->bbs = MALLOC(s, double);
+  shared->b_hat = MALLOC(s, double);
   for (i = 0; i < s; i++)
-    shared->bbs[i] = b[i] - b_hat[i];
+    shared->b_hat[i] = b[i] - b_hat[i];
 
   shared->s = s;
   shared->ord = ord;
@@ -203,7 +203,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   reduction_destroy(&shared->reduction);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
-  FREE(shared->bbs);
+  FREE(shared->b_hat);
 
   FREE2D(shared->w);
   FREE(shared->err);

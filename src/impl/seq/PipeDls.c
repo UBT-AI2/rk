@@ -25,7 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 {
   int i, j, l, k1, k2, k4;
   double *buf, **w, *y_old, *err, *dy;
-  double **A, *b, *b_hat, *bbs, *c;
+  double **A, *b, *b_hat, *c;
   double err_max;
   int s, ord;
   double h, t;
@@ -38,9 +38,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   METHOD(&A, &b, &b_hat, &c, &s, &ord);
 
-  bbs = MALLOC(s, double);
+  b_hat = MALLOC(s, double);
   for (i = 0; i < s; ++i)
-    bbs[i] = b[i] - b_hat[i];
+    b_hat[i] = b[i] - b_hat[i];
 
   buf = MALLOC(ode_size + (s * s + 5 * s - 4) * BLOCKSIZE / 2, double);
   w = MALLOC(s, double *);
@@ -72,13 +72,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (j = 0; j < k1; j += BLOCKSIZE)
     {
-      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy, w);
+      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
 
       l = j, i = 1;
       while (l > 0)
       {
         l -= BLOCKSIZE;
-        block_interm_stage(i, l, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy,
+        block_interm_stage(i, l, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
                            w);
         i++;
       }
@@ -88,17 +88,17 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (i = k1; i < ode_size; i += k4)
     {
-      block_first_stage(i, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy, w);
+      block_first_stage(i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
       i -= BLOCKSIZE;
 
       for (j = 1; j < s - 1; j++)
       {
-        block_interm_stage(j, i, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy,
+        block_interm_stage(j, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
                            w);
         i -= BLOCKSIZE;
       }
 
-      block_last_stage(i, BLOCKSIZE, s, t, h, b, bbs, c, y, err, dy, w,
+      block_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
                        &err_max);
     }
 
@@ -107,9 +107,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     for (i = 1; i < s; i++)
     {
       for (j = i, l = k2; j < s - 1; j++, l -= BLOCKSIZE)
-        block_interm_stage(j, l, BLOCKSIZE, s, t, h, A, b, bbs, c, y, err, dy,
+        block_interm_stage(j, l, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
                            w);
-      block_last_stage(l, BLOCKSIZE, s, t, h, b, bbs, c, y, err, dy, w,
+      block_last_stage(l, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
                        &err_max);
     }
 
@@ -125,7 +125,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FREE(w);
   FREE(buf);
-  FREE(bbs);
+  FREE(b_hat);
 
   print_statistics(timer, steps_acc, steps_rej);
 }
