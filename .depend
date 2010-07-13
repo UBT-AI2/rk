@@ -18,6 +18,10 @@ src/impl/pthreads/D.o: src/impl/pthreads/D.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
   include/block-inline.h
 
+src/impl/pthreads/PipeD2.o: src/impl/pthreads/PipeD2.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  include/block-inline.h
+
 src/impl/pthreads/PipeD.o: src/impl/pthreads/PipeD.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
   include/block-inline.h
@@ -52,6 +56,9 @@ bin/pthreads_bruss2d-mix_Dbc: src/main.o src/methods.o src/threads.o src/tools.o
 
 bin/pthreads_bruss2d-mix_D: src/main.o src/methods.o src/threads.o src/tools.o \
   src/impl/pthreads/D.o src/problems/bruss2d-mix.o
+
+bin/pthreads_bruss2d-mix_PipeD2: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/pthreads/PipeD2.o src/problems/bruss2d-mix.o
 
 bin/pthreads_bruss2d-mix_PipeD: src/main.o src/methods.o src/threads.o src/tools.o \
   src/impl/pthreads/PipeD.o src/problems/bruss2d-mix.o
