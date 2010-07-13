@@ -53,7 +53,7 @@ typedef struct
 
 void *solver_thread(void *argument)
 {
-  int i, j;
+  int i, j, jj, l;
   double **w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
@@ -124,33 +124,34 @@ void *solver_thread(void *argument)
 
     // initialize the pipeline
 
-    for (j = 1; j < s; j++)
+    for (i = 1; i < s; i++)
     {
-      block_first_stage(first + (2 * j - 1) * BLOCKSIZE, BLOCKSIZE,
-                        s, t, h, A, b, b_hat, c, y, err, dy, w);
-      for (i = 1; i < j; i++)
-        block_interm_stage(i, first + ((2 * j - 1) - i) * BLOCKSIZE, BLOCKSIZE,
+      j = first + 2 * i * BLOCKSIZE - BLOCKSIZE;
+
+      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+
+      for (l = 1, j -= BLOCKSIZE; l < i; l++, j -= BLOCKSIZE)
+        block_interm_stage(l, j, BLOCKSIZE,
                            s, t, h, A, b, b_hat, c, y, err, dy, w);
 
-      block_first_stage(first + 2 * j * BLOCKSIZE, BLOCKSIZE,
-                        s, t, h, A, b, b_hat, c, y, err, dy, w);
-      for (i = 1; i < j; i++)
-        block_interm_stage(i, first + (2 * j - i) * BLOCKSIZE, BLOCKSIZE,
+      j += (i + 1) * BLOCKSIZE;
+      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      for (l = 1, j -= BLOCKSIZE; l < i; l++, j -= BLOCKSIZE)
+        block_interm_stage(l, j, BLOCKSIZE,
                            s, t, h, A, b, b_hat, c, y, err, dy, w);
     }
 
     // sweep
 
-    printf("sweep\n");
-
     for (j = first + (s * 2 - 1) * BLOCKSIZE; j < (last - BLOCKSIZE + 1);
          j += BLOCKSIZE)
     {
-      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-      for (i = 1; i < s - 1; i++)
-        block_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE,
+      jj = j;
+      block_first_stage(jj, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      for (i = 1, jj -= BLOCKSIZE; i < s - 1; i++, jj -= BLOCKSIZE)
+        block_interm_stage(i, jj, BLOCKSIZE,
                            s, t, h, A, b, b_hat, c, y, err, dy, w);
-      block_last_stage(j - (s - 1) * BLOCKSIZE, BLOCKSIZE,
+      block_last_stage(jj, BLOCKSIZE,
                        s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
     }
 
@@ -158,45 +159,33 @@ void *solver_thread(void *argument)
 
     // finalize the pipeline
 
-    printf("finalize\n");
-
-    block_first_stage((last - BLOCKSIZE + 1), BLOCKSIZE,
-                      s, t, h, A, b, b_hat, c, y, err, dy, w);
-    for (i = 1; i < s - 1; i++)
-      block_interm_stage(i, (last - BLOCKSIZE + 1) - i * BLOCKSIZE, BLOCKSIZE,
+    j = (last - BLOCKSIZE + 1);
+    block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+    for (i = 1, j -= BLOCKSIZE; i < s - 1; i++, j -= BLOCKSIZE)
+      block_interm_stage(i, j, BLOCKSIZE,
                          s, t, h, A, b, b_hat, c, y, err, dy, w);
-    block_last_stage((last - BLOCKSIZE + 1) - (s - 1) * BLOCKSIZE, BLOCKSIZE,
+    block_last_stage(j, BLOCKSIZE,
                      s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
 
-    block_first_stage(((last - BLOCKSIZE + 1) + 1 * BLOCKSIZE) % ode_size,
-                      BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-    for (i = 1; i < s - 1; i++)
-      block_interm_stage(i,
-                         ((last - BLOCKSIZE + 1) -
-                          (i - 1) * BLOCKSIZE) % ode_size, BLOCKSIZE, s, t, h,
+    block_first_stage(0, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+    for (i = 1, j = (last - BLOCKSIZE + 1); i < s - 1; i++, j -= BLOCKSIZE)
+      block_interm_stage(i, j, BLOCKSIZE, s, t, h,
                          A, b, b_hat, c, y, err, dy, w);
-    block_last_stage(((last - BLOCKSIZE + 1) -
-                      ((s - 1) - 1) * BLOCKSIZE) % ode_size, BLOCKSIZE, s, t, h,
+    block_last_stage(j, BLOCKSIZE, s, t, h,
                      b, b_hat, c, y, err, dy, w, &err_max);
 
-    for (i = 1; i < s; i++)
+    for (i = 1, j = last + 1; i < s; i++, j += BLOCKSIZE)
     {
-      for (j = i; j < s - 1; j++)
-        block_interm_stage(j,
-                           ((last - BLOCKSIZE + 1) +
-                            (2 * i - j) * BLOCKSIZE) % ode_size, BLOCKSIZE, s,
-                           t, h, A, b, b_hat, c, y, err, dy, w);
-      block_last_stage(((last - BLOCKSIZE + 1) +
-                        (2 * i - (s - 1)) * BLOCKSIZE) % ode_size, BLOCKSIZE, s,
-                       t, h, b, b_hat, c, y, err, dy, w, &err_max);
-
-      for (j = i; j < s - 1; j++)
-        block_interm_stage(j,
-                           ((last - BLOCKSIZE + 1) +
-                            (2 * i - j + 1) * BLOCKSIZE) % ode_size, BLOCKSIZE,
+      for (l = i, jj = j; l < s - 1; l++, jj -= BLOCKSIZE)
+        block_interm_stage(l, (jj < ode_size ? jj : jj - ode_size), BLOCKSIZE,
                            s, t, h, A, b, b_hat, c, y, err, dy, w);
-      block_last_stage(((last - BLOCKSIZE + 1) +
-                        (2 * i - (s - 1) + 1) * BLOCKSIZE) % ode_size,
+      block_last_stage((jj < ode_size ? jj : jj - ode_size), BLOCKSIZE, s, t, h,
+                       b, b_hat, c, y, err, dy, w, &err_max);
+
+      for (l = i, jj = j + BLOCKSIZE; l < s - 1; l++, jj -= BLOCKSIZE)
+        block_interm_stage(l, (jj < ode_size ? jj : jj - ode_size), BLOCKSIZE,
+                           s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_last_stage((jj < ode_size ? jj : jj - ode_size),
                        BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
                        &err_max);
     }
