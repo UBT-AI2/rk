@@ -49,6 +49,28 @@ static inline void block_first_stage(int first, int size, int s, double t,
 
 /******************************************************************************/
 
+static inline void block_first_stage_reverse(int first, int size, int s, double t,
+					     double h, double **A, double *b,
+					     double *b_hat, double *c, double *y,
+					     double *err, double *dy, double **w)
+{
+  int j, l;
+
+  for (j = first + size -1; j >= first; j--)
+  {
+    double hF = h * ode_eval_comp(j, t + c[0] * h, y);
+    double Y = y[j];
+
+    for (l = 1; l < s; l++)
+      w[l][j] = Y + A[l][0] * hF;
+
+    dy[j] = b[0] * hF;
+    err[j] = b_hat[0] * hF;
+  }
+}
+
+/******************************************************************************/
+
 static inline void block_interm_stage(int i, int first, int size, int s,
                                       double t, double h, double **A, double *b,
                                       double *b_hat, double *c, double *y,
@@ -57,6 +79,27 @@ static inline void block_interm_stage(int i, int first, int size, int s,
   int j, l;
 
   for (j = first; j < first + size; j++)
+  {
+    double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
+
+    for (l = i + 1; l < s; l++)
+      w[l][j] += A[l][i] * hF;
+
+    dy[j] += b[i] * hF;
+    err[j] += b_hat[i] * hF;
+  }
+}
+
+/******************************************************************************/
+
+static inline void block_interm_stage_reverse(int i, int first, int size, int s,
+                                      double t, double h, double **A, double *b,
+                                      double *b_hat, double *c, double *y,
+                                      double *err, double *dy, double **w)
+{
+  int j, l;
+
+  for (j = first + size -1; j >= first; j--)
   {
     double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
 
@@ -79,6 +122,32 @@ static inline void block_last_stage(int first, int size, int s,
   int j, i = s - 1;
 
   for (j = first; j < first + size; j++)
+  {
+    double yj_old;
+    double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
+
+    dy[j] += b[i] * hF;
+    err[j] += b_hat[i] * hF;
+
+    yj_old = y[j];
+    y[j] += h * dy[j];
+    dy[j] = yj_old;             /* y_old and dy occupy the same space */
+
+    update_error_max(err_max, err[j], y[j], yj_old);
+  }
+}
+
+/******************************************************************************/
+
+static inline void block_last_stage_reverse(int first, int size, int s,
+                                    double t, double h, double *b,
+                                    double *b_hat, double *c, double *y,
+                                    double *err, double *dy,
+                                    double **w, double *err_max)
+{
+  int j, i = s - 1;
+
+  for (j = first + size -1; j >= first; j--)
   {
     double yj_old;
     double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
@@ -152,6 +221,70 @@ static inline void first_block_complete(int me, int i, mutex_lock_t ** mutex)
 static inline void last_block_complete(int me, int i, mutex_lock_t ** mutex)
 {
   mutex_lock_unlock(&(mutex[me][i]));
+}
+
+/******************************************************************************/
+
+static inline void lock_init_phase(uint me, mutex_lock_t ** mutex)
+{
+  mutex_lock_lock(&(mutex[me][0]));
+}
+
+/******************************************************************************/
+
+static inline void unlock_init_phase(uint me, mutex_lock_t ** mutex)
+{
+  mutex_lock_unlock(&(mutex[me][0]));
+}
+
+/******************************************************************************/
+
+static inline void wait_pred_init_complete(uint me, mutex_lock_t ** mutex)
+{
+  if (me > 0)
+  {
+    mutex_lock_lock(&(mutex[me - 1][0]));
+    mutex_lock_unlock(&(mutex[me - 1][0]));
+  }
+}
+
+/******************************************************************************/
+
+static inline void wait_succ_init_complete(uint me, mutex_lock_t ** mutex)
+{
+  if (me < THREADS - 1)
+  {
+    mutex_lock_lock(&(mutex[me + 1][0]));
+    mutex_lock_unlock(&(mutex[me + 1][0]));
+  }
+}
+
+/******************************************************************************/
+
+static inline void get_from_pred(uint me, uint i, double **my_w,
+                                     double **nb_w, uint first, uint B,
+                                     mutex_lock_t ** mutex)
+{
+  if (me > 0)
+  {
+    mutex_lock_lock(&(mutex[me - 1][i]));
+    mutex_lock_unlock(&(mutex[me - 1][i]));
+    copy_vector(my_w[i] + first - B, nb_w[i] + first - B, B);
+  }
+}
+
+/******************************************************************************/
+
+static inline void get_from_succ(uint me, uint i, double **my_w,
+                                     double **nb_w, uint last, uint B,
+                                     mutex_lock_t ** mutex)
+{
+  if (me < THREADS - 1)
+  {
+    mutex_lock_lock(&(mutex[me + 1][i]));
+    mutex_lock_unlock(&(mutex[me + 1][i]));
+    copy_vector(my_w[i] + last + 1, nb_w[i] + last + 1, B);
+  }
 }
 
 /******************************************************************************/
