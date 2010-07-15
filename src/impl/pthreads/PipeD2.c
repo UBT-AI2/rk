@@ -64,7 +64,6 @@ void *solver_thread(void *argument)
   shared_arg_t *shared;
   mutex_lock_t **mutex_first, **mutex_last;
   int me_is_even;
-  int num_blocks;
 
   me = ((arg_t *) argument)->me;
   shared = ((arg_t *) argument)->shared;
@@ -99,8 +98,6 @@ void *solver_thread(void *argument)
 
   assert(s >= 2);               /* !!! at least two stages !!! */
   assert(size >= 2 * s * BLOCKSIZE);    /* !!! at least 2s blocks per thread !!! */
-
-  num_blocks = (ode_size + BLOCKSIZE - 1) / BLOCKSIZE;
 
   printf("%d: %d %d %d\n", me, first, last, size);
 
