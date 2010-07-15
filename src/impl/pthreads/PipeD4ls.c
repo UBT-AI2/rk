@@ -54,7 +54,7 @@ void *solver_thread(void *argument)
 {
   int i, j, k;
   double **w, *y, *y0, *y_old, *err, *dy;
-  double **_w, *_err, *_dy;
+  double *buf;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
   int s, ord, first, last, size, me;
@@ -105,20 +105,27 @@ void *solver_thread(void *argument)
 
   me_is_even = (me % 2 == 0);
 
-  ALLOC2D(_w, s, size + 2 * BLOCKSIZE, double);
-
-  _err = MALLOC(size, double);
-  _dy = MALLOC(size, double);
-
-  err = _err - first;
-  dy = _dy - first;
-
+  buf = MALLOC(BLOCKSIZE + last - first + 1 + (s * s + 5 * s - 4) * BLOCKSIZE / 2, double);
+  dy = buf - first;
   w = MALLOC(s, double *);
-  for (i = 1; i < s; ++i)
+
+  if (me_is_even)
   {
-    w[i] = _w[i] - first + BLOCKSIZE;
-    shared->w[me][i] = w[i];
+    err = dy + s * BLOCKSIZE;
+    shared->w[me][1] = w[1] = err + 3 * BLOCKSIZE;
+
+    for (i = 2; i < s; ++i)
+      shared->w[me][i] = w[i] = w[i - 1] + (i + 2) * BLOCKSIZE;
   }
+  else
+   {
+    dy += (s * s + 7 * s - 4) * BLOCKSIZE / 2 + BLOCKSIZE;
+    err = dy - s * BLOCKSIZE;
+    shared->w[me][1] = w[1] = err - 3 * BLOCKSIZE;
+
+    for (i = 2; i < s; ++i)
+      shared->w[me][i] = w[i] = w[i - 1] - (i + 2) * BLOCKSIZE;
+   }
 
   w_pred = me_is_first_thread ? NULL : shared->w[me - 1];
   w_succ = me_is_last_thread ? NULL : shared->w[me + 1];
@@ -555,10 +562,8 @@ void *solver_thread(void *argument)
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
 
-  FREE2D(_w);
   FREE(w);
-  FREE(_err);
-  FREE(_dy);
+  FREE(buf);
 
   return NULL;
 }
@@ -575,8 +580,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: PipeD4 ");
-  printf("(pipelining with alternative computation order)\n");
+  printf("Implementation variant: PipeDls ");
+  printf("(low-storage pipelining scheme based on implementation D)\n");
   printf("Number of threads: %d\n", THREADS);
 
   arg = MALLOC(THREADS, arg_t);
