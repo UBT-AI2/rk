@@ -38,7 +38,6 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   METHOD(&A, &b, &b_hat, &c, &s, &ord);
 
-  b_hat = MALLOC(s, double);
   for (i = 0; i < s; ++i)
     b_hat[i] = b[i] - b_hat[i];
 
@@ -125,7 +124,6 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FREE(w);
   FREE(buf);
-  FREE(b_hat);
 
   print_statistics(timer, steps_acc, steps_rej);
 }

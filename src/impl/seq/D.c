@@ -37,7 +37,6 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   METHOD(&A, &b, &b_hat, &c, &s, &ord);
 
-  b_hat = MALLOC(s, double);
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
 
@@ -56,20 +55,18 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    printf("%f %f %e %e\n", t0, te, t, h);
-
     err_max = 0.0;
 
     block_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy, w);
 
     for (i = 1; i < s - 1; i++)
-      block_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy,
+                         w);
 
-    block_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
+    block_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err, dy, w,
+                     &err_max);
 
     /* step control */
-
-    printf("e: %e\n", err_max);
 
     step_control(&t, &h, err_max, ord, tol, y, y_old, ode_size, &steps_acc,
                  &steps_rej);
@@ -83,7 +80,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE(err);
   FREE(dy);
 
-  FREE(b_hat);
-
   print_statistics(timer, steps_acc, steps_rej);
 }
+
+/******************************************************************************/
