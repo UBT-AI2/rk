@@ -1,0 +1,256 @@
+Contents
+========
+
+This collection contains a set of sequential and parallel
+implementations of embedded Runge-Kutta solvers.  These
+implementations are slightly modified versions of the implementations
+discussed in the technical report
+
+  Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge~Kutta
+  Solvers for ODE Systems with Limited Access Distance. Bayreuth
+  Reports on Parallel and Distributed Systems, No. 1, University of
+  Bayreuth, July 2010.
+
+Subsets of these implementations have been considered in the following
+articles:
+
+  Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge~Kutta
+  Solvers for ODE Systems with Limited Access Distance. To appear in:
+  International Journal of High Performance Computing Applications.
+  SAGE Publications.
+
+  Matthias Korch and Thomas Rauber. Storage Space Reduction for the
+  Solution of Systems of Ordinary Differential Equations by Pipelining
+  and Overlapping of Vectors. In Proc. of the IPDPS 2010 Workshop on
+  Parallel and Distributed Scientific and Engineering Computing
+  (PDSEC-10). IEEE Computer Society Press 2010. DOI:
+  10.1109/IPDPSW.2010.5470768
+
+  Matthias Korch and Thomas Rauber. Scalability of Time- and
+  Space-Efficient Embedded Runge-Kutta Solvers for Distributed Address
+  Space. In Proc. of the 2009 International Conference on Parallel
+  Processing (ICPP-2009). IEEE Computer Society Press 2009. DOI:
+  10.1109/ICPP.2009.14
+
+  Matthias Korch and Thomas Rauber. Parallel Implementation of
+  Runge-Kutta Integrators with Low Storage Requirements.
+  H. Sips, D. Epema, and H.-X. Lin (Eds.): Euro-Par 2009,
+  LNCS 5704, pp. 785-796, 2009. Springer-Verlag 2009. DOI:
+  10.1007/978-3-642-03869-3_73
+
+The following implementations are part of this collection:
+
+
+Sequential implementations
+--------------------------
+
+  - src/impl/seq/D.c
+
+    * suitable for general ODE systems
+    * loop structure exploits temporal locality of reads
+
+  - src/impl/seq/PipeD.c
+
+    * pipelining scheme based on implementation D
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/seq/PipeDls.c
+
+    * low-storage pipelining scheme based on implementation D
+    * only suitable for ODE systems with limited access distance
+
+
+Parallel implementations for shared address space
+-------------------------------------------------
+
+  - src/impl/pthreads/D.c
+
+    * suitable for general ODE systems
+    * loop structure exploits temporal locality of reads
+    * shared data structures
+    * barrier synchronization between the stages
+
+  - src/impl/pthreads/Dbc.c
+
+    * loop structure exploits temporal locality of reads
+    * shared data structures
+    * block-based synchronization between neighbors using mutex
+      variables
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/pthreads/PipeD.c
+
+    * pipelining scheme based on implementation D
+    * shared data structures
+    * block-based synchronization between neighbors using mutex
+      variables
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/pthreads/PipeD2.c
+
+    * pipelining scheme based on implementation D
+    * alternative finalization strategy
+    * shared data structures
+    * only one barrier operation after the initialization of the
+      pipelines
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/pthreads/PipeD4.c
+
+    * pipelining scheme based on implementation D
+    * alternative computation order
+    * distributed data structures
+    * block-based synchronization between neighbors using mutex
+      variables
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/pthreads/PipeD4ls.c
+
+    * low-storage pipelining scheme based on implementation D
+    * alternative computation order
+    * distributed data structures
+    * block-based synchronization between neighbors using mutex
+      variables
+    * only suitable for ODE systems with limited access distance
+
+These implementations require a POSIX thread library to be installed.
+
+
+Parallel implementations for distributed address space 
+------------------------------------------------------
+
+  - src/impl/mpi/D.c
+
+    * suitable for general ODE systems
+    * loop structure exploits temporal locality of reads
+    * multibroadcast operations (MPI_Allgatherv) between the stages
+
+  - src/impl/mpi/Dbc.c
+
+    * loop structure exploits temporal locality of reads
+    * block-based communication between neighbors using single
+      transfer operations (MPI_Isend/MPI_Irecv)
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/mpi/PipeD.c
+
+    * pipelining scheme based on implementation D
+    * block-based communication between neighbors using single
+      transfer operations (MPI_Isend/MPI_Irecv)
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/mpi/PipeD2.c
+
+    * pipelining scheme based on implementation D
+    * alternative finalization strategy
+    * only one pair of single transfer operations
+      (MPI_Isend/MPI_Irecv), but more data is transferred
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/mpi/PipeD4.c
+
+    * pipelining scheme based on implementation D
+    * alternative computation order
+    * block-based communication between neighbors using single
+      transfer operations (MPI_Isend/MPI_Irecv)
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/mpi/PipeD5.c
+
+    * pipelining scheme based on implementation D
+    * alternative computation order
+    * block-based communication between neighbors using single
+      transfer operations (MPI_Isend/MPI_Irecv)
+    * only suitable for ODE systems with limited access distance
+
+  - src/impl/mpi/PipeD4ls.c
+
+    * low-storage pipelining scheme based on implementation D
+    * alternative computation order
+    * block-based communication between neighbors using single
+      transfer operations (MPI_Isend/MPI_Irecv)
+    * only suitable for ODE systems with limited access distance
+
+These implementations require an MPI library to be installed.
+
+
+Test problems
+-------------
+
+Only one test problem is provided, but you can add your own test
+problems easily.
+
+  - BRUSS2D-MIX
+    * 2D Brusselator equation with diffusion (2D PDE with 2 variables)
+    * semi-discretized on spatial N x N grid
+    * mixed row-oriented ordering to obtain a limited access distance
+      of d(f)=2N
+
+
+Configuration of parameters
+===========================
+
+Some parameters can be changed by editing the file
+"include/config.h". See the comments in that file for details.
+
+
+Compiling
+=========
+
+A Makefile is provided which builds all combinations of test problems
+and implementations automatically when you invoke "make" -- provided
+you have gcc and MPI installed. The binaries will be created in the
+"bin/" directory.
+
+If MPI is not installed on your system, you should set HAVE_MPI to
+"no" in the Makefile.
+
+When you modify the source codes, in particular, when you add or
+remove implementations or when you add or remove "#include"
+directives, it will be necessary to run "make dep" to let "make" know
+the new dependencies between the source files.
+
+
+Running
+=======
+
+After successful compilation, you can run the sequential
+implementations directly from the "bin/" directory, e.g., you can
+type:
+
+  > ./bin/seq_bruss2d-mix_D
+
+If you have built with HAVE_MPI=yes, some MPI libraries may require
+the use of "mpirun" or "mpiexec", e.g.:
+
+  > mpirun -n 1 ./bin/seq_bruss2d-mix_D
+
+The shared-address space implementations can be started in a similar
+fashion, but you should specify the number of threads beforehand by
+setting the environment variable NUM_THREADS:
+
+  > NUM_THREADS=4 ./bin/pthreads_bruss2d-mix_Dbc
+
+The distributed-address space implementations usually require the use
+of "mpirun" or "mpiexec":
+
+  > mpirun -n 10 ./bin/mpi_bruss2d-mix_PipeD4ls
+
+
+License
+=======
+
+GPL version 2 or later. Please see COPYING for details.
+
+
+Contact
+=======
+
+Dr. Matthias Korch
+Department of Computer Science
+Applied Computer Science 2
+University of Bayreuth
+95440 Bayreuth
+Germany
+
+E-Mail: korch@uni-bayreuth.de
