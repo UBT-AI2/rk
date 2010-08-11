@@ -17,6 +17,10 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.                #
 ################################################################################
 
+HAVE_MPI       = yes
+
+################################################################################
+
 BINDIR 		= bin
 INCDIR 		= include
 SRCDIR 		= src
@@ -34,9 +38,13 @@ DEPFILE         = .depend
 
 ################################################################################
 
+CFLAGS  = -I$(INCDIR) -D_REENTRANT -Wall -O3 -g -D_GNU_SOURCE
+ifeq "$(HAVE_MPI)" "yes"
+CC      = mpicc
+CFLAGS += -DHAVE_MPI
+else
 CC      = gcc
-MPIC    = mpicc
-CFLAGS  = -I$(INCDIR) -D_REENTRANT -Wall -O3 -g
+endif
 LDFLAGS = -lpthread -lm
 MAKEDEP = $(CC) $(CFLAGS) -MM -MG
 
@@ -45,7 +53,11 @@ MAKEDEP = $(CC) $(CFLAGS) -MM -MG
 PROB_SOURCES     = $(wildcard $(PROBDIR)/*.c)
 IMPL_SOURCES_SEQ = $(wildcard $(SEQDIR)/*.c)
 IMPL_SOURCES_PTH = $(wildcard $(PTHDIR)/*.c)
+ifeq "$(HAVE_MPI)" "yes"
 IMPL_SOURCES_MPI = $(wildcard $(MPIDIR)/*.c)
+else
+IMPL_SOURCES_MPI =
+endif
 OTHER_SOURCES    = $(wildcard $(SRCDIR)/*.c)
 IMPL_SOURCES     = $(IMPL_SOURCES_SEQ) $(IMPL_SOURCES_PTH) $(IMPL_SOURCES_MPI)
 ALL_SOURCES      = $(IMPL_SOURCES) $(PROB_SOURCES) $(OTHER_SOURCES)
@@ -85,11 +97,8 @@ $(PREFIX_MPI):	$(MPI_TARGETS)
 
 ################################################################################
 
-$(SEQ_TARGETS) $(PTH_TARGETS):
-		$(CC) -o $@ $^ $(LDFLAGS)
-
-$(MPI_TARGETS):
-		$(MPICC) -o $@ $^ $(LDFLAGS)
+$(ALL_TARGETS):
+		$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 ################################################################################
 

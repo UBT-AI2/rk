@@ -49,7 +49,7 @@
 #endif
 
 /*
- * Tolerance of the stepsize control
+ * Tolerance of the stepsize controller
  */
 
 #ifndef TOL
@@ -61,7 +61,7 @@
  */
 
 #ifndef STEP_LIMIT
-#define STEP_LIMIT              100
+#define STEP_LIMIT              200
 #endif
 
 /*
@@ -77,20 +77,12 @@
 #endif
 
 /*
- * Number of threads
- */
-
-#ifndef THREADS
-#define THREADS                 4
-#endif
-
-/*
  * Blocksize to be used by the pipelining implementations. Must be
- * larger or equal 2 * BRUSS_GRID_SIZE.
+ * larger than or equal to 2 * BRUSS_GRID_SIZE.
  */
 
 #ifndef BLOCKSIZE
-#define BLOCKSIZE               (2 * BRUSS_GRID_SIZE)
+#define BLOCKSIZE               (2 * (BRUSS_GRID_SIZE))
 #endif
 
 /*
@@ -114,17 +106,6 @@
  */
 
 #define USE_MEMCPY
-
-/******************************************************************************/
-/* Platform detection                                                         */
-/******************************************************************************/
-
-#ifndef SPARC
-#  if defined(__sparc) || defined(sparc) || defined(__sparcv8) || \
-      defined(__sparcv9)
-#    define SPARC
-#  endif
-#endif
 
 /******************************************************************************/
 

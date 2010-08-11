@@ -31,7 +31,7 @@ typedef struct
   double **A, *b, *b_hat, *c;
   int s, ord;
 
-  int *first, *size;
+  int *elem_offset, *elem_length;
 
   barrier_t barrier;
   reduction_t reduction;
@@ -53,7 +53,7 @@ void *solver_thread(void *argument)
   double **w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int i, s, ord, first, last, size, me;
+  int i, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
@@ -83,17 +83,15 @@ void *solver_thread(void *argument)
   bar = &shared->barrier;
   red = &shared->reduction;
 
-  first = shared->first[me];
-  size = shared->size[me];
-  last = first + size - 1;
-
-  printf("%d: %d %d %d\n", me, first, last, size);
+  first_elem = shared->elem_offset[me];
+  num_elems = shared->elem_length[me];
+  last_elem = first_elem + num_elems - 1;
 
   y_old = dy;
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
-  copy_vector(y + first, y0 + first, size);
+  copy_vector(y + first_elem, y0 + first_elem, num_elems);
 
   barrier_wait(bar);
 
@@ -101,34 +99,35 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    printf("%f %f %e %e\n", t0, te, t, h);
-
     err_max = 0.0;
 
-    block_first_stage(first, size, s, t, h, A, b, b_hat, c, y, err, dy, w);
+    block_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat, c, y, err,
+                      dy, w);
 
     for (i = 1; i < s - 1; i++)
     {
       barrier_wait(bar);
-      block_interm_stage(i, first, size, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_interm_stage(i, first_elem, num_elems, s, t, h, A, b, b_hat, c, y,
+                         err, dy, w);
     }
 
     barrier_wait(bar);
-    block_last_stage(first, size, s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
+    block_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c, y, err, dy, w,
+                     &err_max);
 
-    printf("e[%d]: %e\n", me, err_max);
     err_max = reduction_max(red, err_max);
-    printf("e: %e\n", err_max);
 
     /* step control */
 
-    step_control(&t, &h, err_max, ord, tol, y + first, y_old + first, size,
-                 &steps_acc, &steps_rej);
+    step_control(&t, &h, err_max, ord, tol, y + first_elem, y_old + first_elem,
+                 num_elems, &steps_acc, &steps_rej);
 
     barrier_wait(bar);
   }
 
   timer_stop(&timer);
+
+  printf("e: %.20e\n", err_max);
 
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
@@ -149,11 +148,11 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
   printf("Implementation variant: D (temporal locality of reads)\n");
-  printf("Number of threads: %d\n", THREADS);
+  printf("Number of threads: %d\n", threads);
 
-  arg = MALLOC(THREADS, arg_t);
+  arg = MALLOC(threads, arg_t);
   shared = MALLOC(1, shared_arg_t);
-  arglist = MALLOC(THREADS, void *);
+  arglist = MALLOC(threads, void *);
 
   shared->y0 = y0;
   shared->y = y;
@@ -179,25 +178,26 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->err = MALLOC(ode_size, double);
   shared->dy = MALLOC(ode_size, double);
 
-  barrier_init(&shared->barrier, THREADS);
-  reduction_init(&shared->reduction, THREADS);
+  barrier_init(&shared->barrier, threads);
+  reduction_init(&shared->reduction, threads);
 
-  shared->first = MALLOC(THREADS, int);
-  shared->size = MALLOC(THREADS, int);
+  shared->elem_offset = MALLOC(threads, int);
+  shared->elem_length = MALLOC(threads, int);
 
-  blockwise_distribution(THREADS, ode_size, shared->first, shared->size);
+  blockwise_distribution(threads, ode_size, shared->elem_offset,
+                         shared->elem_length);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
   {
     arg[i].me = i;
     arg[i].shared = shared;
     arglist[i] = (void *) (arg + i);
   }
 
-  run_threads(THREADS, solver_thread, arglist);
+  run_threads(threads, solver_thread, arglist);
 
-  FREE(shared->first);
-  FREE(shared->size);
+  FREE(shared->elem_offset);
+  FREE(shared->elem_length);
 
   barrier_destroy(&shared->barrier);
   reduction_destroy(&shared->reduction);

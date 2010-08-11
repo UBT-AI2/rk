@@ -31,7 +31,7 @@ typedef struct
   double **A, *b, *b_hat, *c;
   int s, ord;
 
-  int *first, *size;
+  int *block_offset, *block_length;
 
   barrier_t barrier;
   reduction_t reduction;
@@ -56,7 +56,7 @@ void *solver_thread(void *argument)
   double **w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int i, s, ord, first, last, size, me;
+  int i, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
@@ -90,17 +90,15 @@ void *solver_thread(void *argument)
   mutex_first = shared->mutex_first;
   mutex_last = shared->mutex_last;
 
-  first = shared->first[me];
-  size = shared->size[me];
-  last = first + size - 1;
-
-  printf("%d: %d %d %d\n", me, first, last, size);
+  first_elem = shared->block_offset[me] * BLOCKSIZE;
+  num_elems = shared->block_length[me] * BLOCKSIZE;
+  last_elem = first_elem + num_elems - 1;
 
   y_old = dy;
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
-  copy_vector(y + first, y0 + first, size);
+  copy_vector(y + first_elem, y0 + first_elem, num_elems);
 
   barrier_wait(bar);
 
@@ -108,8 +106,6 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    printf("%f %f %e %e\n", t0, te, t, h);
-
     err_max = 0.0;
 
     init_mutexes(me, s, mutex_first, mutex_last);
@@ -117,35 +113,36 @@ void *solver_thread(void *argument)
 
     /* evaluate the inner blocks of the first stage */
 
-    block_first_stage(first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, A, b,
-                      b_hat, c, y, err, dy, w);
+    block_first_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE, s, t,
+                      h, A, b, b_hat, c, y, err, dy, w);
 
     /* evaluate first block of the first stage and send result to the
        previous processor */
 
-    block_first_stage(first, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+    block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                      dy, w);
     first_block_complete(me, 1, mutex_first);
 
     /* evaluate last block of the second stage and send result to the
        next processor */
 
-    block_first_stage(last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                      err, dy, w);
+    block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
+                      b_hat, c, y, err, dy, w);
     last_block_complete(me, 1, mutex_last);
 
     for (i = 1; i < s - 1; i++)
     {
       /* evaluate the inner blocks of stage i */
 
-      block_interm_stage(i, first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, A,
-                         b, b_hat, c, y, err, dy, w);
+      block_interm_stage(i, first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
+                         s, t, h, A, b, b_hat, c, y, err, dy, w);
 
       /* evaluate first block of stage i and send result to the
          previous processor */
 
       wait_for_pred(me, i, mutex_last);
-      block_interm_stage(i, first, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                         w);
+      block_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                         err, dy, w);
       first_block_complete(me, i + 1, mutex_first);
       release_pred(me, i, mutex_last);
 
@@ -153,43 +150,42 @@ void *solver_thread(void *argument)
          processor */
 
       wait_for_succ(me, i, mutex_first);
-      block_interm_stage(i, last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b, b_hat,
-                         c, y, err, dy, w);
+      block_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
+                         b_hat, c, y, err, dy, w);
       last_block_complete(me, i + 1, mutex_last);
       release_succ(me, i, mutex_first);
     }
 
     /* evaluate the inner blocks of stage s - 1 */
 
-    block_last_stage(first + BLOCKSIZE, size - 2 * BLOCKSIZE, s, t, h, b, b_hat,
-                     c, y, err, dy, w, &err_max);
+    block_last_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE, s, t, h,
+                     b, b_hat, c, y, err, dy, w, &err_max);
 
     /* evaluate first block of stage s - 1 */
 
     wait_for_pred(me, s - 1, mutex_last);
-    block_last_stage(first, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
+    block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
                      &err_max);
     release_pred(me, s - 1, mutex_last);
 
     /* evaluate last block of stage s - 1 */
 
     wait_for_succ(me, s - 1, mutex_first);
-    block_last_stage(last - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b, b_hat, c, y,
-                     err, dy, w, &err_max);
+    block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b, b_hat, c,
+                     y, err, dy, w, &err_max);
     release_succ(me, s - 1, mutex_first);
 
-    printf("e[%d]: %e\n", me, err_max);
     err_max = reduction_max(red, err_max);
-    printf("e: %e\n", err_max);
 
     /* step control */
 
-    step_control(&t, &h, err_max, ord, tol, y + first, y_old + first, size,
-                 &steps_acc, &steps_rej);
+    step_control(&t, &h, err_max, ord, tol, y + first_elem, y_old + first_elem,
+                 num_elems, &steps_acc, &steps_rej);
   }
 
   timer_stop(&timer);
 
+  printf("e: %e\n", err_max);
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
 
@@ -208,13 +204,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: Dbc ");
-  printf("(blockwise neighbor-to-neighbor communication)\n");
-  printf("Number of threads: %d\n", THREADS);
+  printf("Implementation variant: Dbc (D with block-based communication)\n");
+  printf("communication)\n");
+  printf("Number of threads: %d\n", threads);
 
-  arg = MALLOC(THREADS, arg_t);
+  arg = MALLOC(threads, arg_t);
   shared = MALLOC(1, shared_arg_t);
-  arglist = MALLOC(THREADS, void *);
+  arglist = MALLOC(threads, void *);
 
   shared->y0 = y0;
   shared->y = y;
@@ -240,34 +236,36 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->err = MALLOC(ode_size, double);
   shared->dy = MALLOC(ode_size, double);
 
-  barrier_init(&shared->barrier, THREADS);
-  reduction_init(&shared->reduction, THREADS);
+  barrier_init(&shared->barrier, threads);
+  reduction_init(&shared->reduction, threads);
 
-  ALLOC2D(shared->mutex_first, THREADS, s, mutex_lock_t);
-  ALLOC2D(shared->mutex_last, THREADS, s, mutex_lock_t);
+  ALLOC2D(shared->mutex_first, threads, s, mutex_lock_t);
+  ALLOC2D(shared->mutex_last, threads, s, mutex_lock_t);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
     for (j = 0; j < s; j++)
     {
       mutex_lock_init(&(shared->mutex_first[i][j]));
       mutex_lock_init(&(shared->mutex_last[i][j]));
     }
 
-  shared->first = MALLOC(THREADS, int);
-  shared->size = MALLOC(THREADS, int);
+  shared->block_offset = MALLOC(threads, int);
+  shared->block_length = MALLOC(threads, int);
 
-  blockwise_distribution(THREADS, ode_size, shared->first, shared->size);
+  assert(ode_size % BLOCKSIZE == 0);
+  blockwise_distribution(threads, ode_size / BLOCKSIZE, shared->block_offset,
+                         shared->block_length);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
   {
     arg[i].me = i;
     arg[i].shared = shared;
     arglist[i] = (void *) (arg + i);
   }
 
-  run_threads(THREADS, solver_thread, arglist);
+  run_threads(threads, solver_thread, arglist);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
     for (j = 0; j < s; j++)
     {
       mutex_lock_destroy(&(shared->mutex_first[i][j]));
@@ -277,8 +275,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE2D(shared->mutex_first);
   FREE2D(shared->mutex_last);
 
-  FREE(shared->first);
-  FREE(shared->size);
+  FREE(shared->block_offset);
+  FREE(shared->block_length);
 
   barrier_destroy(&shared->barrier);
   reduction_destroy(&shared->reduction);

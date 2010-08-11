@@ -30,10 +30,6 @@ void run_threads(int threads, thread_function_t * func, void **arglist)
 
   tid = MALLOC(threads, pthread_t);
 
-#ifdef SPARC
-  thr_setconcurrency(threads);
-#endif
-
   for (i = 1; i < threads; i++)
   {
     pthread_attr_t attr;

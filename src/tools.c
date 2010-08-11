@@ -37,6 +37,8 @@ void blockwise_distribution(int processors, int n, int *first, int *size)
 {
   int i;
 
+  assert(n >= processors);
+
   int q = n / processors;
   int r = n % processors;
 
@@ -53,10 +55,15 @@ void blockwise_distribution(int processors, int n, int *first, int *size)
 
 void print_statistics(double timer, int steps_acc, int steps_rej)
 {
+#ifdef HAVE_MPI
+  if (me > 0)
+    return;
+#endif
+
   printf("Number of steps: %d (%d accepted, %d rejected)\n",
          steps_acc + steps_rej, steps_acc, steps_rej);
 
-#ifdef STEP_LIMIT
+#if (STEP_LIMIT > 0)
   if (steps_acc + steps_rej >= STEP_LIMIT)
     printf("Step limit reached.\n");
 #endif

@@ -18,18 +18,27 @@
 /******************************************************************************/
 
 #include "methods.h"
+#include "solver.h"
 
 /******************************************************************************/
 
-void RKF23(double ***A, double **b, double **b_hat, double **c, int *s, 
-	   int *ord)
+void RKF23(double ***A, double **b, double **b_hat, double **c, int *s,
+           int *ord)
 {
-  // Quelle: Weiner, S. 64
+  /* Source: K. Strehmel, R. Weiner, Numerik gewöhnlicher
+     Differentialgleichungen, Teubner 1995, p. 64 */
 
   *s = 3;
   *ord = 2;
 
-  printf("Method: RKF 2(3) (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Method: RKF 2(3) (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  }
+#endif
 
   alloc_emb_rk_method(A, b, b_hat, c, *s);
 
@@ -61,15 +70,28 @@ void RKF23(double ***A, double **b, double **b_hat, double **c, int *s,
 
 /******************************************************************************/
 
-void DOPRI54(double ***A, double **b, double **b_hat, double **c, int *s, 
-	     int *ord)
+void DOPRI54(double ***A, double **b, double **b_hat, double **c, int *s,
+             int *ord)
 {
-  // Quelle: Hairer, Bd. I, Butcher 2003 (S. 194)
+  /*
+     Sources:
+     - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
+     Equations I -- Nonstiff Problems, 2nd rev. ed., Springer 2000, p. 178
+     - J.C. Butcher, Numerical Methods for Ordinary Differential Equations,
+     2nd. ed., Wiley 2008, p. 211
+   */
 
   *s = 7;
   *ord = 5;
 
-  printf("Method: DOPRI 5(4) (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Method: DOPRI 5(4) (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  }
+#endif
 
   alloc_emb_rk_method(A, b, b_hat, c, *s);
 
@@ -156,24 +178,28 @@ void DOPRI54(double ***A, double **b, double **b_hat, double **c, int *s,
 
 /******************************************************************************/
 
-void DOPRI87(double ***A, double **b, double **b_hat, double **c, int *s, 
-	     int *ord)
+void DOPRI87(double ***A, double **b, double **b_hat, double **c, int *s,
+             int *ord)
 {
   /* 
-     P.J. Prince, J.R. Dormand 'High Order Embedded Runge-Kutta Formulae'
-                  J. Comp. Appl. Math. 7 (1981) 67-75.
-
-     E. Hairer, S.P. Norsett, G. Wanner
-             Solving Ordinary Differential Equations I,
-             Nonstiff Problems
-             Springer-Verlag Berlin 1987 (SCM 8)
-             C.F. SECTION II.6
-  */
+     Sources:
+     - P.J. Prince, J.R. Dormand, High Order Embedded Runge-Kutta Formulae,
+     J. Comp. Appl. Math. 7 (1981), p. 67-75
+     - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
+     Equations I -- Nonstiff Problems, 1st ed., Springer 1987, sec. II.6
+   */
 
   *s = 13;
   *ord = 8;
 
-  printf("Method: DOPRI 8(7) (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Method: DOPRI 8(7) (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  }
+#endif
 
   alloc_emb_rk_method(A, b, b_hat, c, *s);
 

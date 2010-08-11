@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "config.h"
 #include "ode.h"
@@ -27,54 +28,94 @@
 
 /******************************************************************************/
 
-int main()
+#ifdef HAVE_MPI
+#include <mpi.h>
+int me;
+int processes;
+#endif
+
+int threads;
+
+/******************************************************************************/
+
+int main(int argc, char *argv[])
 {
   double *y_0, *y;
   double min, max;
   int i;
   double timer;
+  char *env_threads;
+
+#ifdef HAVE_MPI
+  MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, (int *) &me);
+  MPI_Comm_size(MPI_COMM_WORLD, (int *) &processes);
+  assert(processes <= ode_size);
+#endif
+
+  env_threads = getenv("NUM_THREADS");
+  threads =
+    ((env_threads != NULL) ? imin(imax(1, atoi(env_threads)), ode_size) : 1);
 
   y_0 = MALLOC(ode_size, double);
   y = MALLOC(ode_size, double);
 
   ode_start(T_START, y_0);
 
-  for (min = max = y_0[0], i = 1; i < ode_size; i++)
-    if (y_0[i] < min)
-      min = y_0[i];
-    else if (y_0[i] > max)
-      max = y_0[i];
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    for (min = max = y_0[0], i = 1; i < ode_size; i++)
+      if (y_0[i] < min)
+        min = y_0[i];
+      else if (y_0[i] > max)
+        max = y_0[i];
 
-  printf("Integration interval: [%.2e,%.2e]\n", T_START, T_END);
-  printf("Initial value: y0[0] = %e, ..., y0[%d] = %e; min = %e, max = %e\n",
-         y_0[0], ode_size - 1, y_0[ode_size - 1], min, max);
-  printf("Tolerance: %.2e\n", TOL);
+    printf("Integration interval: [%.2e,%.2e]\n", T_START, T_END);
+    printf("Initial value: y0[0] = %e, ..., y0[%d] = %e; min = %e, max = %e\n",
+           y_0[0], ode_size - 1, y_0[ode_size - 1], min, max);
+    printf("Tolerance: %.2e\n", TOL);
 
 #if LOCKTYPE == SPINLOCK
-  printf("Lock type: spin\n");
+    printf("Lock type: spin\n");
 #else
-  printf("Lock type: mutex\n");
+    printf("Lock type: mutex\n");
 #endif
 
-  printf("Pad size: %d\n", PAD_SIZE);
+    printf("Pad size: %d\n", PAD_SIZE);
+#ifdef HAVE_MPI
+  }
+#endif
 
   timer_start(&timer);
   solver(T_START, T_END, y_0, y, TOL);
   timer_stop(&timer);
 
-  printf("Total time:  %.2e s\n", timer);
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Total time:  %.2e s\n", timer);
 
-  for (min = max = y[0], i = 1; i < ode_size; i++)
-    if (y[i] < min)
-      min = y[i];
-    else if (y[i] > max)
-      max = y[i];
+    for (min = max = y[0], i = 1; i < ode_size; i++)
+      if (y[i] < min)
+        min = y[i];
+      else if (y[i] > max)
+        max = y[i];
 
-  printf("Result: y[0] = %e, ..., y[%d] = %e; min = %e, max = %e\n",
-         y[0], ode_size - 1, y[ode_size - 1], min, max);
+    printf("Result: y[0] = %e, ..., y[%d] = %e; min = %e, max = %e\n",
+           y[0], ode_size - 1, y[ode_size - 1], min, max);
+#ifdef HAVE_MPI
+  }
+#endif
 
   FREE(y_0);
   FREE(y);
+
+#ifdef HAVE_MPI
+  MPI_Finalize();
+#endif
 
   exit(0);
 }

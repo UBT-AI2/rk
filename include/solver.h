@@ -32,11 +32,25 @@
 #include "methods.h"
 #include "threads.h"
 #include "tools.h"
-#include "block-inline.h"
+
+/******************************************************************************/
+
+#ifdef HAVE_MPI
+#include <mpi.h>
+extern int me;
+extern int processes;
+#endif
+
+extern int threads;
 
 /******************************************************************************/
 
 extern void solver(double t0, double te, double *y0, double *y, double tol);
+
+/******************************************************************************/
+
+#include "block-inline.h"       /* must be included _after_ the declaration of
+                                   me, processes, and threads */
 
 /******************************************************************************/
 

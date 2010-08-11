@@ -29,8 +29,8 @@
 /* Memory management                                                          */
 /******************************************************************************/
 
-static inline void alloc_emb_rk_method(double ***A, double **b, double **b_hat, 
-				       double **c, int s)
+static inline void alloc_emb_rk_method(double ***A, double **b, double **b_hat,
+                                       double **c, int s)
 {
   int i;
   *A = MALLOC(s, double *);
@@ -43,7 +43,7 @@ static inline void alloc_emb_rk_method(double ***A, double **b, double **b_hat,
 }
 
 static inline void free_emb_rk_method(double ***A, double **b, double **b_hat,
-				      double **c, int s)
+                                      double **c, int s)
 {
   FREE((*A)[0]);
   FREE(*A);
@@ -55,11 +55,11 @@ static inline void free_emb_rk_method(double ***A, double **b, double **b_hat,
 /******************************************************************************/
 
 typedef void (emb_rk_method_t) (double ***A, double **b, double **b_hat,
-				double **c, int *s, int *ord);
+                                double **c, int *s, int *ord);
 
-emb_rk_method_t RKF23;       /* s =  3, ord = 2 */
-emb_rk_method_t DOPRI54;     /* s =  7, ord = 5 */
-emb_rk_method_t DOPRI87;     /* s = 13, ord = 8 */
+emb_rk_method_t RKF23;          /* s =  3, ord = 2 */
+emb_rk_method_t DOPRI54;        /* s =  7, ord = 5 */
+emb_rk_method_t DOPRI87;        /* s = 13, ord = 8 */
 
 /******************************************************************************/
 

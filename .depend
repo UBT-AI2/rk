@@ -1,54 +1,89 @@
 src/impl/seq/D.o: src/impl/seq/D.c include/solver.h include/config.h include/ode.h \
   include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/seq/PipeD.o: src/impl/seq/PipeD.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/seq/PipeDls.o: src/impl/seq/PipeDls.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/pthreads/Dbc.o: src/impl/pthreads/Dbc.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/pthreads/D.o: src/impl/pthreads/D.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/pthreads/PipeD2.o: src/impl/pthreads/PipeD2.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/pthreads/PipeD4.o: src/impl/pthreads/PipeD4.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 src/impl/pthreads/PipeD4ls.o: src/impl/pthreads/PipeD4ls.c include/solver.h \
   include/config.h include/ode.h include/methods.h include/tools.h \
-  include/threads.h include/block-inline.h
+  include/threads.h /usr/lib64/mpi/gcc/openmpi/include/mpi.h \
+  include/block-inline.h
 
 src/impl/pthreads/PipeD.o: src/impl/pthreads/PipeD.c include/solver.h include/config.h \
   include/ode.h include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
-src/problems/bruss2d-mix.o: src/problems/bruss2d-mix.c include/ode.h include/config.h
+src/impl/mpi/Dbc.o: src/impl/mpi/Dbc.c include/solver.h include/config.h include/ode.h \
+  include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/impl/mpi/D.o: src/impl/mpi/D.c include/solver.h include/config.h include/ode.h \
+  include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/impl/mpi/PipeD2.o: src/impl/mpi/PipeD2.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/impl/mpi/PipeD4.o: src/impl/mpi/PipeD4.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/impl/mpi/PipeD4ls.o: src/impl/mpi/PipeD4ls.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/impl/mpi/PipeD5.o: src/impl/mpi/PipeD5.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/impl/mpi/PipeD.o: src/impl/mpi/PipeD.c include/solver.h include/config.h \
+  include/ode.h include/methods.h include/tools.h include/threads.h \
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
+
+src/problems/bruss2d-mix.o: src/problems/bruss2d-mix.c include/ode.h include/config.h \
+  include/solver.h include/ode.h include/methods.h include/tools.h \
+  include/threads.h /usr/lib64/mpi/gcc/openmpi/include/mpi.h \
+  include/block-inline.h
 
 src/main.o: src/main.c include/config.h include/ode.h include/config.h \
   include/solver.h include/ode.h include/methods.h include/tools.h \
-  include/threads.h include/block-inline.h include/tools.h
+  include/threads.h /usr/lib64/mpi/gcc/openmpi/include/mpi.h \
+  include/block-inline.h include/tools.h
 
 src/methods.o: src/methods.c include/methods.h include/tools.h \
-  include/config.h
+  include/config.h include/solver.h include/ode.h include/methods.h \
+  include/threads.h /usr/lib64/mpi/gcc/openmpi/include/mpi.h \
+  include/block-inline.h
 
 src/threads.o: src/threads.c include/threads.h include/config.h \
   include/tools.h
 
 src/tools.o: src/tools.c include/solver.h include/config.h include/ode.h \
   include/methods.h include/tools.h include/threads.h \
-  include/block-inline.h
+  /usr/lib64/mpi/gcc/openmpi/include/mpi.h include/block-inline.h
 
 bin/seq_bruss2d-mix_D: src/main.o src/methods.o src/threads.o src/tools.o \
   src/impl/seq/D.o src/problems/bruss2d-mix.o
@@ -76,4 +111,25 @@ bin/pthreads_bruss2d-mix_PipeD4ls: src/main.o src/methods.o src/threads.o src/to
 
 bin/pthreads_bruss2d-mix_PipeD: src/main.o src/methods.o src/threads.o src/tools.o \
   src/impl/pthreads/PipeD.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_Dbc: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/Dbc.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_D: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/D.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_PipeD2: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/PipeD2.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_PipeD4: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/PipeD4.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_PipeD4ls: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/PipeD4ls.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_PipeD5: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/PipeD5.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_PipeD: src/main.o src/methods.o src/threads.o src/tools.o \
+  src/impl/mpi/PipeD.o src/problems/bruss2d-mix.o
 

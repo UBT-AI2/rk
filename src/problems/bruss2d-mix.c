@@ -23,6 +23,7 @@
 /******************************************************************************/
 
 #include "ode.h"
+#include "solver.h"
 
 /******************************************************************************/
 
@@ -36,10 +37,17 @@ void ode_start(double t, double *y0)
 {
   int i, j;
 
-  printf("ODE: BRUSS2D-MIX ");
-  printf("(2D Brusselator with mixed row-oriented ordering)\n");
-  printf("Grid size: %d\n", BRUSS_GRID_SIZE);
-  printf("Alpha: %.2e\n", BRUSS_ALPHA);
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("ODE: BRUSS2D-MIX ");
+    printf("(2D Brusselator with mixed row-oriented ordering)\n");
+    printf("Grid size: %d\n", BRUSS_GRID_SIZE);
+    printf("Alpha: %.2e\n", BRUSS_ALPHA);
+#ifdef HAVE_MPI
+  }
+#endif
 
   for (i = 0; i < BRUSS_GRID_SIZE; i++)
     for (j = 0; j < BRUSS_GRID_SIZE; j++)
@@ -60,21 +68,23 @@ double ode_eval_comp(int i, double t, const double *y)
 {
   double N1 = (double) BRUSS_GRID_SIZE - 1.0;
   int N2 = BRUSS_GRID_SIZE + BRUSS_GRID_SIZE;
-  
-  int k = i / N2;            /* row index */
-  int j = (i - k * N2) / 2;  /* column index */
-  int v = i & 1;             /* i even -> variable U; i odd -> variable V */ 
 
-  if (!v)                    /* --- U --------------------------------------- */
+  int k = i / N2;               /* row index */
+  int j = (i - k * N2) / 2;     /* column index */
+  int v = i & 1;                /* i even -> variable U; i odd -> variable V */
+
+  if (!v)                       /* --- U ----------------------------------- */
   {
     if (k == 0)
     {
       if (j == 0)
+      {
         /* U(0,0) */
         return 1.0
           + y[i] * y[i] * y[i + 1] - 4.4 * y[i]
           + BRUSS_ALPHA * N1 * N1 * (2.0 * y[i + N2] + 2.0 * y[i + 2] -
                                      4.0 * y[i]);
+      }
 
       if (j == BRUSS_GRID_SIZE - 1)
         /* U(0,BRUSS_GRID_SIZE-1) */
@@ -134,7 +144,7 @@ double ode_eval_comp(int i, double t, const double *y)
         * (y[i - N2] + y[i + N2] + y[i - 2] + y[i + 2] - 4.0 * y[i]);
     }
   }
-  else                       /* --- V --------------------------------------- */
+  else                          /* --- V ----------------------------------- */
   {
     if (k == 0)
     {

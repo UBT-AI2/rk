@@ -31,7 +31,7 @@ typedef struct
   double **A, *b, *b_hat, *c;
   int s, ord;
 
-  int *first, *size;
+  int *block_offset, *block_length;
 
   barrier_t barrier;
   reduction_t reduction;
@@ -53,17 +53,16 @@ typedef struct
 
 void *solver_thread(void *argument)
 {
-  int i, j, jj, l;
+  int i, j;
   double **w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int s, ord, first, last, size, me;
+  int s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
   shared_arg_t *shared;
   mutex_lock_t **mutex_first, **mutex_last;
-  int me_is_even;
 
   me = ((arg_t *) argument)->me;
   shared = ((arg_t *) argument)->shared;
@@ -92,22 +91,18 @@ void *solver_thread(void *argument)
   mutex_first = shared->mutex_first;
   mutex_last = shared->mutex_last;
 
-  first = shared->first[me];
-  size = shared->size[me];
-  last = first + size - 1;
+  first_elem = shared->block_offset[me] * BLOCKSIZE;
+  num_elems = shared->block_length[me] * BLOCKSIZE;
+  last_elem = first_elem + num_elems - 1;
 
   assert(s >= 2);               /* !!! at least two stages !!! */
-  assert(size >= 2 * s * BLOCKSIZE);    /* !!! at least 2s blocks per thread !!! */
-
-  printf("%d: %d %d %d\n", me, first, last, size);
+  assert(num_elems >= 2 * s * BLOCKSIZE);       /* !!! at least 2s blocks per thread !!! */
 
   y_old = dy;
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
-  copy_vector(y + first, y0 + first, size);
-
-  me_is_even = (me % 2 == 0);
+  copy_vector(y + first_elem, y0 + first_elem, num_elems);
 
   barrier_wait(bar);
 
@@ -115,90 +110,96 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    printf("%f %f %e %e\n", t0, te, t, h);
-
     err_max = 0.0;
 
-    // initialize the pipeline
+    /* initialize the pipeline */
 
-    for (i = 1; i < s; i++)
+    for (j = 1; j < s; j++)
     {
-      j = first + 2 * i * BLOCKSIZE - BLOCKSIZE;
+      block_first_stage(first_elem + (2 * j - 1) * BLOCKSIZE, BLOCKSIZE, s, t,
+                        h, A, b, b_hat, c, y, err, dy, w);
+      for (i = 1; i < j; i++)
+        block_interm_stage(i, first_elem + (2 * j - 1 - i) * BLOCKSIZE,
+                           BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
 
-      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-
-      for (l = 1, j -= BLOCKSIZE; l < i; l++, j -= BLOCKSIZE)
-        block_interm_stage(l, j, BLOCKSIZE,
-                           s, t, h, A, b, b_hat, c, y, err, dy, w);
-
-      j += (i + 1) * BLOCKSIZE;
-      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-      for (l = 1, j -= BLOCKSIZE; l < i; l++, j -= BLOCKSIZE)
-        block_interm_stage(l, j, BLOCKSIZE,
+      block_first_stage(first_elem + 2 * j * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
+                        b, b_hat, c, y, err, dy, w);
+      for (i = 1; i < j; i++)
+        block_interm_stage(i, first_elem + (2 * j - i) * BLOCKSIZE, BLOCKSIZE,
                            s, t, h, A, b, b_hat, c, y, err, dy, w);
     }
 
-    // sweep
+    /* sweep */
 
-    for (j = first + (s * 2 - 1) * BLOCKSIZE; j < (last - BLOCKSIZE + 1);
-         j += BLOCKSIZE)
+    for (j = first_elem + (2 * s - 1) * BLOCKSIZE;
+         j < last_elem - BLOCKSIZE + 1; j += BLOCKSIZE)
     {
-      jj = j;
-      block_first_stage(jj, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-      for (i = 1, jj -= BLOCKSIZE; i < s - 1; i++, jj -= BLOCKSIZE)
-        block_interm_stage(i, jj, BLOCKSIZE,
-                           s, t, h, A, b, b_hat, c, y, err, dy, w);
-      block_last_stage(jj, BLOCKSIZE,
-                       s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
+      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      for (i = 1; i < s - 1; i++)
+        block_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
+                           b_hat, c, y, err, dy, w);
+      block_last_stage(j - ((s - 1) * BLOCKSIZE), BLOCKSIZE, s, t, h, b, b_hat,
+                       c, y, err, dy, w, &err_max);
     }
 
     barrier_wait(bar);
 
-    // finalize the pipeline
+    /* finalize the pipeline */
 
-    j = (last - BLOCKSIZE + 1);
-    block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-    for (i = 1, j -= BLOCKSIZE; i < s - 1; i++, j -= BLOCKSIZE)
-      block_interm_stage(i, j, BLOCKSIZE,
-                         s, t, h, A, b, b_hat, c, y, err, dy, w);
-    block_last_stage(j, BLOCKSIZE,
+    block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
+                      b_hat, c, y, err, dy, w);
+
+    for (i = 1; i < s - 1; i++)
+      block_interm_stage(i, last_elem - BLOCKSIZE + 1 - i * BLOCKSIZE,
+                         BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+
+    block_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1) * BLOCKSIZE, BLOCKSIZE,
                      s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
 
-    block_first_stage(0, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
-    for (i = 1, j = (last - BLOCKSIZE + 1); i < s - 1; i++, j -= BLOCKSIZE)
-      block_interm_stage(i, j, BLOCKSIZE, s, t, h,
-                         A, b, b_hat, c, y, err, dy, w);
-    block_last_stage(j, BLOCKSIZE, s, t, h,
-                     b, b_hat, c, y, err, dy, w, &err_max);
 
-    for (i = 1, j = last + 1; i < s; i++, j += BLOCKSIZE)
+    block_first_stage((last_elem + 1) % ode_size, BLOCKSIZE, s, t, h, A, b,
+                      b_hat, c, y, err, dy, w);
+
+    for (i = 1; i < s - 1; i++)
+      block_interm_stage(i, last_elem + 1 - i * BLOCKSIZE, BLOCKSIZE, s,
+                         t, h, A, b, b_hat, c, y, err, dy, w);
+
+    block_last_stage(last_elem + 1 - (s - 1) * BLOCKSIZE, BLOCKSIZE, s,
+                     t, h, b, b_hat, c, y, err, dy, w, &err_max);
+
+    for (i = 1; i < s; i++)
     {
-      for (l = i, jj = j; l < s - 1; l++, jj -= BLOCKSIZE)
-        block_interm_stage(l, (jj < ode_size ? jj : jj - ode_size), BLOCKSIZE,
-                           s, t, h, A, b, b_hat, c, y, err, dy, w);
-      block_last_stage((jj < ode_size ? jj : jj - ode_size), BLOCKSIZE, s, t, h,
-                       b, b_hat, c, y, err, dy, w, &err_max);
+      for (j = i; j < s - 1; j++)
+        block_interm_stage(j,
+                           (last_elem - BLOCKSIZE + 1 +
+                            (2 * i - j) * BLOCKSIZE) % ode_size, BLOCKSIZE, s,
+                           t, h, A, b, b_hat, c, y, err, dy, w);
 
-      for (l = i, jj = j + BLOCKSIZE; l < s - 1; l++, jj -= BLOCKSIZE)
-        block_interm_stage(l, (jj < ode_size ? jj : jj - ode_size), BLOCKSIZE,
-                           s, t, h, A, b, b_hat, c, y, err, dy, w);
-      block_last_stage((jj < ode_size ? jj : jj - ode_size),
+      block_last_stage((last_elem - BLOCKSIZE + 1 +
+                        (2 * i - s + 1) * BLOCKSIZE) % ode_size, BLOCKSIZE, s,
+                       t, h, b, b_hat, c, y, err, dy, w, &err_max);
+
+      for (j = i; j < s - 1; j++)
+        block_interm_stage(j,
+                           (last_elem + 1 + (2 * i - j) * BLOCKSIZE) % ode_size,
+                           BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+
+      block_last_stage((last_elem + 1 + (2 * i - s + 1) * BLOCKSIZE) % ode_size,
                        BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
                        &err_max);
     }
 
     /* step control */
 
-    printf("e[%d]: %e\n", me, err_max);
     err_max = reduction_max(red, err_max);
-    printf("e: %e\n", err_max);
 
-    step_control(&t, &h, err_max, ord, tol, y + first, y_old + first, size,
-                 &steps_acc, &steps_rej);
+    step_control(&t, &h, err_max, ord, tol, y + first_elem, y_old + first_elem,
+                 num_elems, &steps_acc, &steps_rej);
   }
 
   timer_stop(&timer);
 
+  printf("e: %.20e\n", err_max);
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
 
@@ -218,12 +219,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
   printf("Implementation variant: PipeD2 ");
-  printf("(pipelining with alternative finalization strategy)\n");
-  printf("Number of threads: %d\n", THREADS);
+  printf("(pipelining scheme based on implementation D ");
+  printf("with alternative finalization strategy)\n");
+  printf("Number of threads: %d\n", threads);
 
-  arg = MALLOC(THREADS, arg_t);
+  arg = MALLOC(threads, arg_t);
   shared = MALLOC(1, shared_arg_t);
-  arglist = MALLOC(THREADS, void *);
+  arglist = MALLOC(threads, void *);
 
   shared->y0 = y0;
   shared->y = y;
@@ -249,34 +251,36 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->err = MALLOC(ode_size, double);
   shared->dy = MALLOC(ode_size, double);
 
-  barrier_init(&shared->barrier, THREADS);
-  reduction_init(&shared->reduction, THREADS);
+  barrier_init(&shared->barrier, threads);
+  reduction_init(&shared->reduction, threads);
 
-  ALLOC2D(shared->mutex_first, THREADS, s, mutex_lock_t);
-  ALLOC2D(shared->mutex_last, THREADS, s, mutex_lock_t);
+  ALLOC2D(shared->mutex_first, threads, s, mutex_lock_t);
+  ALLOC2D(shared->mutex_last, threads, s, mutex_lock_t);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
     for (j = 0; j < s; j++)
     {
       mutex_lock_init(&(shared->mutex_first[i][j]));
       mutex_lock_init(&(shared->mutex_last[i][j]));
     }
 
-  shared->first = MALLOC(THREADS, int);
-  shared->size = MALLOC(THREADS, int);
+  shared->block_offset = MALLOC(threads, int);
+  shared->block_length = MALLOC(threads, int);
 
-  blockwise_distribution(THREADS, ode_size, shared->first, shared->size);
+  assert(ode_size % BLOCKSIZE == 0);
+  blockwise_distribution(threads, ode_size / BLOCKSIZE, shared->block_offset,
+                         shared->block_length);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
   {
     arg[i].me = i;
     arg[i].shared = shared;
     arglist[i] = (void *) (arg + i);
   }
 
-  run_threads(THREADS, solver_thread, arglist);
+  run_threads(threads, solver_thread, arglist);
 
-  for (i = 0; i < THREADS; i++)
+  for (i = 0; i < threads; i++)
     for (j = 0; j < s; j++)
     {
       mutex_lock_destroy(&(shared->mutex_first[i][j]));
@@ -286,8 +290,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE2D(shared->mutex_first);
   FREE2D(shared->mutex_last);
 
-  FREE(shared->first);
-  FREE(shared->size);
+  FREE(shared->block_offset);
+  FREE(shared->block_length);
 
   barrier_destroy(&shared->barrier);
   reduction_destroy(&shared->reduction);

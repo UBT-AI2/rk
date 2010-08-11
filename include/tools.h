@@ -81,6 +81,13 @@ static inline void swap_matrices(double ***a, double ***b)
   *a = tmp;
 }
 
+static inline void swap_vectors(double **a, double **b)
+{
+  double *tmp = *b;
+  *b = *a;
+  *a = tmp;
+}
+
 /******************************************************************************/
 /* Memory management                                                          */
 /******************************************************************************/
@@ -182,7 +189,7 @@ void blockwise_distribution(int processors, int n, int *first, int *size);
 /* Walk through integration interval                                          */
 /******************************************************************************/
 
-#ifdef STEP_LIMIT
+#if (STEP_LIMIT > 0)
 #define FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej) \
   for (t = t0; (t < te) && (steps_acc + steps_rej < STEP_LIMIT); \
        h = fmin(h, te - t))
@@ -208,6 +215,7 @@ double initial_stepsize(double t0, double H, const double *y_0, int ord,
  *   Wiley, 2003, eq. (391a).    
  */
 
+
 #define AMAX  2.0               /* 1.5, ..., 5.0 */
 #define AMIN  0.5               /* 0.2, ..., 0.5 */
 #define ASAF  0.9               /* 0.8, 0.9, or pow(0.25, 1.0 / (ord) + 1.0) */
@@ -223,21 +231,23 @@ static inline double h_new_rej(double h, double err, double tol, int ord)
   return h_new_acc(h, err, tol, ord);
 }
 
-static inline void step_control(double *t, double *h, double err, int ord,
-                                double tol, double *y, double *y_old, int n,
-                                int *counter_acc, int *counter_rej)
+static inline int step_control(double *t, double *h, double err, int ord,
+                               double tol, double *y, double *y_old, int n,
+                               int *counter_acc, int *counter_rej)
 {
   if (err <= tol)               /* accept */
   {
     *t += *h;
     *h = h_new_acc(*h, err, tol, ord);
     (*counter_acc)++;
+    return 1;
   }
   else                          /* reject */
   {
     copy_vector(y, y_old, n);
     *h = h_new_rej(*h, err, tol, ord);
     (*counter_rej)++;
+    return 0;
   }
 }
 
