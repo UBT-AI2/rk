@@ -127,8 +127,6 @@ void *solver_thread(void *argument)
 
   timer_stop(&timer);
 
-  printf("e: %.20e\n", err_max);
-
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
 

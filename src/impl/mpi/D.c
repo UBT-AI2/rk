@@ -137,7 +137,6 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE(elem_offset);
   FREE(elem_length);
 
-  printf("e=%.20e\n", err_max);
   print_statistics(timer, steps_acc, steps_rej);
 }
 

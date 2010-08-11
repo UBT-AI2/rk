@@ -642,7 +642,6 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE(block_offset);
   FREE(block_length);
 
-  printf("e: %.20e\n", err_max);
   print_statistics(timer, steps_acc, steps_rej);
 }
 
