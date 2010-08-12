@@ -6,7 +6,7 @@ implementations of embedded Runge-Kutta solvers.  These
 implementations are slightly modified versions of the implementations
 discussed in the technical report
 
-  Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge~Kutta
+  Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge-Kutta
   Solvers for ODE Systems with Limited Access Distance. Bayreuth
   Reports on Parallel and Distributed Systems, No. 1, University of
   Bayreuth, July 2010.
@@ -14,7 +14,7 @@ discussed in the technical report
 Subsets of these implementations have been considered in the following
 articles:
 
-  Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge~Kutta
+  Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge-Kutta
   Solvers for ODE Systems with Limited Access Distance. To appear in:
   International Journal of High Performance Computing Applications.
   SAGE Publications.
