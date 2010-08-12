@@ -92,8 +92,8 @@ static inline void swap_vectors(double **a, double **b)
 /* Memory management                                                          */
 /******************************************************************************/
 
-/* Macro to be used in the defintion of padded data structures 
- to minimize the effects of false sharing. */
+/* Macro to be used in the defintion of padded data structures
+   to minimize the effects of false sharing. */
 
 #ifndef PAD_SIZE
 #define PAD_SIZE             0
@@ -207,14 +207,13 @@ double initial_stepsize(double t0, double H, const double *y_0, int ord,
 
 /*
  * Stepsize selection according to
- * 
- *   K. Strehmel and R. Weiner: Numerik gewoehnlicher Differentialgleichungen, 
- *   Teubner, 1995, eq. (2.5.13).
- * 
- *   J. C. Butcher: Numerical methods for ordinary differential equations,
- *   Wiley, 2003, eq. (391a).    
+ *
+ *   K. Strehmel, R. Weiner, Numerik gewöhnlicher Differentialgleichungen, 
+ *   Teubner 1995, p. 60, eq. (2.5.13)
+ *
+ *   J.C. Butcher, Numerical Methods for Ordinary Differential Equations,
+ *   2nd. ed., Wiley 2008, p. 310, eq. (391a)
  */
-
 
 #define AMAX  2.0               /* 1.5, ..., 5.0 */
 #define AMIN  0.5               /* 0.2, ..., 0.5 */

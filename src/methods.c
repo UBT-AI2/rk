@@ -25,8 +25,10 @@
 void RKF23(double ***A, double **b, double **b_hat, double **c, int *s,
            int *ord)
 {
-  /* Source: K. Strehmel, R. Weiner, Numerik gewöhnlicher
-     Differentialgleichungen, Teubner 1995, p. 64 */
+  /*
+   * Source: K. Strehmel, R. Weiner, Numerik gewöhnlicher
+   * Differentialgleichungen, Teubner 1995, p. 64
+   */
 
   *s = 3;
   *ord = 2;
@@ -74,11 +76,11 @@ void DOPRI54(double ***A, double **b, double **b_hat, double **c, int *s,
              int *ord)
 {
   /*
-     Sources:
-     - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
-     Equations I -- Nonstiff Problems, 2nd rev. ed., Springer 2000, p. 178
-     - J.C. Butcher, Numerical Methods for Ordinary Differential Equations,
-     2nd. ed., Wiley 2008, p. 211
+   * Sources:
+   * - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
+   *   Equations I -- Nonstiff Problems, 2nd rev. ed., Springer 2000, p. 178
+   * - J.C. Butcher, Numerical Methods for Ordinary Differential Equations,
+   *   2nd. ed., Wiley 2008, p. 211
    */
 
   *s = 7;
@@ -181,12 +183,12 @@ void DOPRI54(double ***A, double **b, double **b_hat, double **c, int *s,
 void DOPRI87(double ***A, double **b, double **b_hat, double **c, int *s,
              int *ord)
 {
-  /* 
-     Sources:
-     - P.J. Prince, J.R. Dormand, High Order Embedded Runge-Kutta Formulae,
-     J. Comp. Appl. Math. 7 (1981), p. 67-75
-     - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
-     Equations I -- Nonstiff Problems, 1st ed., Springer 1987, sec. II.6
+  /*
+   * Sources:
+   * - P.J. Prince, J.R. Dormand, High Order Embedded Runge-Kutta Formulae,
+   *   J. Comp. Appl. Math. 7 (1981), p. 67-75
+   * - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
+   *   Equations I -- Nonstiff Problems, 1st ed., Springer 1987, sec. II.6
    */
 
   *s = 13;
