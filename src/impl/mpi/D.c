@@ -31,7 +31,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   double h, t;
   double timer;
   int steps_acc = 0, steps_rej = 0;
-  int first_elem, num_elems, last_elem, *elem_offset, *elem_length;
+  int first_elem, num_elems, *elem_offset, *elem_length;
 
   if (me == 0)
   {
@@ -59,7 +59,6 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   first_elem = elem_offset[me];
   num_elems = elem_length[me];
-  last_elem = first_elem + num_elems - 1;
 
   assert(s >= 2);               /* !!! at least two stages !!! */
 

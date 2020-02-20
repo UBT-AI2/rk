@@ -32,7 +32,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   double timer;
   int steps_acc = 0, steps_rej = 0;
   int first_elem, num_elems, last_elem, *elem_offset, *elem_length;
-  int first_block, num_blocks, last_block, *block_offset, *block_length;
+  int num_blocks, *block_offset, *block_length;
   MPI_Request recv_req_succ, send_req_succ, recv_req_pred, send_req_pred;
   MPI_Status status;
   int me_is_even;
@@ -66,9 +66,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   blockwise_distribution(processes, ode_size / BLOCKSIZE, block_offset,
                          block_length);
 
-  first_block = block_offset[me];
   num_blocks = block_length[me];
-  last_block = first_block + num_blocks - 1;
 
   for (i = 0; i < processes; i++)
   {

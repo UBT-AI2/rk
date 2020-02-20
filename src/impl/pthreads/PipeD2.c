@@ -62,7 +62,6 @@ void *solver_thread(void *argument)
   barrier_t *bar;
   reduction_t *red;
   shared_arg_t *shared;
-  mutex_lock_t **mutex_first, **mutex_last;
 
   me = ((arg_t *) argument)->me;
   shared = ((arg_t *) argument)->shared;
@@ -87,9 +86,6 @@ void *solver_thread(void *argument)
 
   bar = &shared->barrier;
   red = &shared->reduction;
-
-  mutex_first = shared->mutex_first;
-  mutex_last = shared->mutex_last;
 
   first_elem = shared->block_offset[me] * BLOCKSIZE;
   num_elems = shared->block_length[me] * BLOCKSIZE;

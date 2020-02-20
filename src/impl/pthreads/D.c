@@ -53,7 +53,7 @@ void *solver_thread(void *argument)
   double **w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int i, s, ord, first_elem, last_elem, num_elems, me;
+  int i, s, ord, first_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
@@ -85,7 +85,6 @@ void *solver_thread(void *argument)
 
   first_elem = shared->elem_offset[me];
   num_elems = shared->elem_length[me];
-  last_elem = first_elem + num_elems - 1;
 
   y_old = dy;
 
