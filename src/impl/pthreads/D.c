@@ -100,19 +100,19 @@ void *solver_thread(void *argument)
   {
     err_max = 0.0;
 
-    block_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat, c, y, err,
-                      dy, w);
+    block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat, c, y,
+                              err, dy, w);
 
     for (i = 1; i < s - 1; i++)
     {
       barrier_wait(bar);
-      block_interm_stage(i, first_elem, num_elems, s, t, h, A, b, b_hat, c, y,
-                         err, dy, w);
+      block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b, b_hat,
+                                 c, y, err, dy, w);
     }
 
     barrier_wait(bar);
-    block_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c, y, err, dy, w,
-                     &err_max);
+    block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c, y,
+                             err, dy, w, &err_max);
 
     err_max = reduction_max(red, err_max);
 

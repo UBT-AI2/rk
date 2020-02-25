@@ -23,21 +23,21 @@
 
 void solver(double t0, double te, double *y0, double *y, double tol)
 {
-  int i, j, l;
-  double **v, *w, *y_old, *err, *dy, *gathered_w;
+  int i;
+  double **w, *y_old, *err, *dy, *gathered_w, *v;
   double **A, *b, *b_hat, *c;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
   double timer;
   int steps_acc = 0, steps_rej = 0;
-  int first_elem, last_elem, num_elems, *elem_offset, *elem_length;
+  int first_elem, num_elems, *elem_offset, *elem_length;
 
   if (me == 0)
   {
     printf("Solver type: parallel embedded Runge-Kutta method");
     printf(" for distributed address space\n");
-    printf("Implementation variant: A (spatial locality)\n");
+    printf("Implementation variant: D (temporal locality of reads)\n");
     printf("Number of MPI processes: %d\n", processes);
   }
 
@@ -46,13 +46,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
 
-  ALLOC2D(v, s, ode_size, double);
+  ALLOC2D(w, s, ode_size, double);
 
-  dy = MALLOC(ode_size, double);
+  v = MALLOC(BLOCKSIZE, double);
+
   err = MALLOC(ode_size, double);
-
-  w = y_old = dy;
-  gathered_w = err;
+  dy = MALLOC(ode_size, double);
+  gathered_w = w[0];
 
   elem_offset = MALLOC(processes, int);
   elem_length = MALLOC(processes, int);
@@ -61,7 +61,10 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   first_elem = elem_offset[me];
   num_elems = elem_length[me];
-  last_elem = first_elem + num_elems - 1;
+
+  assert(s >= 2);               /* !!! at least two stages !!! */
+
+  y_old = dy;
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
@@ -71,37 +74,44 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    /* stages */
+    my_err_max = 0.0;
+
+    /* first stage (0) */
 
     MPI_Allgatherv(y + first_elem, num_elems, MPI_DOUBLE,
                    gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                    MPI_COMM_WORLD);
 
-    block_rhs(0, first_elem, num_elems, t, h, c, gathered_w, v);
+    swap_vectors(&y, &gathered_w);
+    tiled_block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat,
+                                    c, y, err, dy, w, v);
+    swap_vectors(&y, &gathered_w);
 
-    for (l = 1; l < s; l++)
+    /* stage 1 to s-2 */
+
+    for (i = 1; i < s - 1; i++)
     {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
-
-      MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE,
+      MPI_Allgatherv(w[i] + first_elem, num_elems, MPI_DOUBLE,
                      gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                      MPI_COMM_WORLD);
 
-      block_rhs(l, first_elem, num_elems, t, h, c, gathered_w, v);
+      swap_vectors(&w[i], &gathered_w);
+      tiled_block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
+      swap_vectors(&w[i], &gathered_w);
+
     }
 
-    /* output approximation */
+    /* last stage (s-1) */
 
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    MPI_Allgatherv(w[s - 1] + first_elem, num_elems, MPI_DOUBLE,
+                   gathered_w, elem_length, elem_offset, MPI_DOUBLE,
+                   MPI_COMM_WORLD);
 
-    my_err_max = 0.0;
-    for (j = first_elem; j <= last_elem; j++)
-    {
-      double yj_old = y[j];
-      y[j] += dy[j];
-      y_old[j] = yj_old;        /* y_old and dy occupy the same space */
-      update_error_max(&my_err_max, err[j], y[j], yj_old);
-    }
+    swap_vectors(&w[s - 1], &gathered_w);
+    tiled_block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c,
+                                   y, err, dy, w, v, &my_err_max);
+    swap_vectors(&w[s - 1], &gathered_w);
 
     /* step control */
 
@@ -121,9 +131,11 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
 
-  FREE2D(v);
-  FREE(dy);
+  FREE2D(w);
   FREE(err);
+  FREE(dy);
+
+  FREE(v);
 
   FREE(elem_offset);
   FREE(elem_length);

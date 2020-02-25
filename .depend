@@ -26,6 +26,20 @@ src/impl/seq/D.o: src/impl/seq/D.c include/solver.h include/config.h include/ode
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
  include/block-inline.h
 
+src/impl/seq/Dblock.o: src/impl/seq/Dblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
+src/impl/seq/AEblock.o: src/impl/seq/AEblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
 src/impl/seq/A.o: src/impl/seq/A.c include/solver.h include/config.h include/ode.h \
  include/methods.h include/tools.h include/threads.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
@@ -76,7 +90,29 @@ src/impl/pthreads/D.o: src/impl/pthreads/D.c include/solver.h include/config.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
  include/block-inline.h
 
+src/impl/pthreads/Dblock.o: src/impl/pthreads/Dblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
 src/impl/pthreads/Dbc.o: src/impl/pthreads/Dbc.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
+src/impl/pthreads/Dbcblock.o: src/impl/pthreads/Dbcblock.c include/solver.h \
+ include/config.h include/ode.h include/methods.h include/tools.h \
+ include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
+src/impl/pthreads/AEblock.o: src/impl/pthreads/AEblock.c include/solver.h include/config.h \
  include/ode.h include/methods.h include/tools.h include/threads.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
@@ -139,8 +175,29 @@ src/impl/mpi/D.o: src/impl/mpi/D.c include/solver.h include/config.h include/ode
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
  include/block-inline.h
 
+src/impl/mpi/Dblock.o: src/impl/mpi/Dblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
 src/impl/mpi/Dbc.o: src/impl/mpi/Dbc.c include/solver.h include/config.h include/ode.h \
  include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
+src/impl/mpi/Dbcblock.o: src/impl/mpi/Dbcblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
+ /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
+ include/block-inline.h
+
+src/impl/mpi/AEblock.o: src/impl/mpi/AEblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpio.h \
  /usr/central/suse/x86_64/15.1/mpich/3.3.2/include/mpi.h \
@@ -199,6 +256,12 @@ bin/seq_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
 bin/seq_bruss2d-mix_D: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/D.o src/problems/bruss2d-mix.o
 
+bin/seq_bruss2d-mix_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/Dblock.o src/problems/bruss2d-mix.o
+
+bin/seq_bruss2d-mix_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/AEblock.o src/problems/bruss2d-mix.o
+
 bin/seq_bruss2d-mix_A: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/A.o src/problems/bruss2d-mix.o
 
@@ -220,8 +283,17 @@ bin/pthreads_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
 bin/pthreads_bruss2d-mix_D: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/D.o src/problems/bruss2d-mix.o
 
+bin/pthreads_bruss2d-mix_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Dblock.o src/problems/bruss2d-mix.o
+
 bin/pthreads_bruss2d-mix_Dbc: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/Dbc.o src/problems/bruss2d-mix.o
+
+bin/pthreads_bruss2d-mix_Dbcblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Dbcblock.o src/problems/bruss2d-mix.o
+
+bin/pthreads_bruss2d-mix_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/AEblock.o src/problems/bruss2d-mix.o
 
 bin/pthreads_bruss2d-mix_A: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/A.o src/problems/bruss2d-mix.o
@@ -247,8 +319,17 @@ bin/mpi_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
 bin/mpi_bruss2d-mix_D: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/D.o src/problems/bruss2d-mix.o
 
+bin/mpi_bruss2d-mix_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Dblock.o src/problems/bruss2d-mix.o
+
 bin/mpi_bruss2d-mix_Dbc: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/Dbc.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_Dbcblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Dbcblock.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/AEblock.o src/problems/bruss2d-mix.o
 
 bin/mpi_bruss2d-mix_A: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/A.o src/problems/bruss2d-mix.o

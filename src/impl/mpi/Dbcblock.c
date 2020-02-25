@@ -24,7 +24,7 @@
 void solver(double t0, double te, double *y0, double *y, double tol)
 {
   int i;
-  double **w, *y_old, *err, *dy;
+  double **w, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
   double err_max, my_err_max;
   int s, ord;
@@ -50,6 +50,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     b_hat[i] = b[i] - b_hat[i];
 
   ALLOC2D(w, s, ode_size, double);
+
+  v = MALLOC(BLOCKSIZE, double);
 
   err = MALLOC(ode_size, double);
   dy = MALLOC(ode_size, double);
@@ -110,8 +112,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     /* evaluate the inner blocks of the first stage */
 
-    block_scatter_first_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
-                              s, t, h, A, b, b_hat, c, y, err, dy, w);
+    tiled_block_scatter_first_stage(first_elem + BLOCKSIZE,
+                                    num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
+                                    b_hat, c, y, err, dy, w, v);
 
     /* evaluate first block of the first stage and send 
        result to the previous processor */
@@ -119,8 +122,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     complete_recv_pred(&recv_req_pred, &status);
     start_recv_pred(w[1], first_elem, BLOCKSIZE, 1, &recv_req_pred);
 
-    block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                              err, dy, w);
+    tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                    c, y, err, dy, w, v);
 
     complete_send_pred(&send_req_pred, &status);
     start_send_pred(w[1], first_elem, BLOCKSIZE, 1, &send_req_pred);
@@ -131,8 +134,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     complete_recv_succ(&recv_req_succ, &status);
     start_recv_succ(w[1], last_elem, BLOCKSIZE, 1, &recv_req_succ);
 
-    block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A,
-                              b, b_hat, c, y, err, dy, w);
+    tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                    h, A, b, b_hat, c, y, err, dy, w, v);
 
     complete_send_succ(&send_req_succ, &status);
     start_send_succ(w[1], last_elem, BLOCKSIZE, 1, &send_req_succ);
@@ -141,9 +144,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     {
       /* evaluate the inner blocks of stage i */
 
-      block_scatter_interm_stage(i, first_elem + BLOCKSIZE,
-                                 num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
-                                 b_hat, c, y, err, dy, w);
+      tiled_block_scatter_interm_stage(i, first_elem + BLOCKSIZE,
+                                       num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
 
       /* evaluate first block of stage i and send 
          result to the previous processor */
@@ -151,8 +154,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
       complete_recv_pred(&recv_req_pred, &status);
       start_recv_pred(w[i + 1], first_elem, BLOCKSIZE, i + 1, &recv_req_pred);
 
-      block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                 c, y, err, dy, w);
+      tiled_block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
 
       complete_send_pred(&send_req_pred, &status);
       start_send_pred(w[i + 1], first_elem, BLOCKSIZE, i + 1, &send_req_pred);
@@ -163,8 +166,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
       complete_recv_succ(&recv_req_succ, &status);
       start_recv_succ(w[i + 1], last_elem, BLOCKSIZE, i + 1, &recv_req_succ);
 
-      block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
-                                 h, A, b, b_hat, c, y, err, dy, w);
+      tiled_block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                       s, t, h, A, b, b_hat, c, y, err, dy, w,
+                                       v);
 
       complete_send_succ(&send_req_succ, &status);
       start_send_succ(w[i + 1], last_elem, BLOCKSIZE, i + 1, &send_req_succ);
@@ -172,22 +176,24 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     /* evaluate the inner blocks of stage s-1 */
 
-    block_scatter_last_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
-                             s, t, h, b, b_hat, c, y, err, dy, w, &my_err_max);
+    tiled_block_scatter_last_stage(first_elem + BLOCKSIZE,
+                                   num_elems - 2 * BLOCKSIZE, s, t, h, b, b_hat,
+                                   c, y, err, dy, w, v, &my_err_max);
 
     /* evaluate first block of stage s-1 */
 
     complete_recv_pred(&recv_req_pred, &status);
-    block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
-                             err, dy, w, &my_err_max);
+    tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c,
+                                   y, err, dy, w, v, &my_err_max);
 
     complete_send_pred(&send_req_pred, &status);
 
     /* evaluate last block of stage s-1 */
 
     complete_recv_succ(&recv_req_succ, &status);
-    block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                             b_hat, c, y, err, dy, w, &my_err_max);
+    tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                   h, b, b_hat, c, y, err, dy, w, v,
+                                   &my_err_max);
 
     complete_send_succ(&send_req_succ, &status);
 
@@ -212,6 +218,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE2D(w);
   FREE(err);
   FREE(dy);
+
+  FREE(v);
 
   FREE(elem_offset);
   FREE(elem_length);

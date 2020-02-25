@@ -122,17 +122,19 @@ void *solver_thread(void *argument)
 
     for (j = 1; j < s; j++)
     {
-      block_first_stage(first_elem + (2 * j - 1) * BLOCKSIZE, BLOCKSIZE, s, t,
-                        h, A, b, b_hat, c, y, err, dy, w);
+      block_scatter_first_stage(first_elem + (2 * j - 1) * BLOCKSIZE, BLOCKSIZE,
+                                s, t, h, A, b, b_hat, c, y, err, dy, w);
       for (i = 1; i < j; i++)
-        block_interm_stage(i, first_elem + (2 * j - 1 - i) * BLOCKSIZE,
-                           BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+        block_scatter_interm_stage(i, first_elem + (2 * j - 1 - i) * BLOCKSIZE,
+                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                   dy, w);
 
-      block_first_stage(first_elem + 2 * j * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
-                        b, b_hat, c, y, err, dy, w);
+      block_scatter_first_stage(first_elem + 2 * j * BLOCKSIZE, BLOCKSIZE, s, t,
+                                h, A, b, b_hat, c, y, err, dy, w);
       for (i = 1; i < j; i++)
-        block_interm_stage(i, first_elem + (2 * j - i) * BLOCKSIZE, BLOCKSIZE,
-                           s, t, h, A, b, b_hat, c, y, err, dy, w);
+        block_scatter_interm_stage(i, first_elem + (2 * j - i) * BLOCKSIZE,
+                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                   dy, w);
     }
 
     /* sweep */
@@ -140,14 +142,15 @@ void *solver_thread(void *argument)
     for (j = first_elem + (2 * s - 1) * BLOCKSIZE;
          j < last_elem - BLOCKSIZE + 1; j += BLOCKSIZE)
     {
-      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                dy, w);
 
       for (i = 1; i < s - 1; i++)
-        block_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
-                           b_hat, c, y, err, dy, w);
+        block_scatter_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
+                                   b, b_hat, c, y, err, dy, w);
 
-      block_last_stage(j - ((s - 1) * BLOCKSIZE), BLOCKSIZE, s, t, h, b, b_hat,
-                       c, y, err, dy, w, &err_max);
+      block_scatter_last_stage(j - ((s - 1) * BLOCKSIZE), BLOCKSIZE, s, t, h, b,
+                               b_hat, c, y, err, dy, w, &err_max);
     }
 
     /* finalization */
@@ -157,36 +160,37 @@ void *solver_thread(void *argument)
 
   finalize_low:
 
-    block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                      dy, w);
+    block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                              err, dy, w);
     first_block_complete(me, 1, mutex_first);
 
     for (i = 1; i < s - 1; i++)
-      block_interm_stage(i, first_elem + i * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
-                         b, b_hat, c, y, err, dy, w);
+      block_scatter_interm_stage(i, first_elem + i * BLOCKSIZE, BLOCKSIZE, s, t,
+                                 h, A, b, b_hat, c, y, err, dy, w);
 
-    block_last_stage(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h, b,
-                     b_hat, c, y, err, dy, w, &err_max);
+    block_scatter_last_stage(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t,
+                             h, b, b_hat, c, y, err, dy, w, &err_max);
 
     for (j = 1; j < s - 1; j++)
     {
       wait_for_pred(me, j, mutex_last);
-      block_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                         err, dy, w);
+      block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                 c, y, err, dy, w);
       release_pred(me, j, mutex_last);
       first_block_complete(me, j + 1, mutex_first);
 
       for (i = j + 1; i < s - 1; i++)
-        block_interm_stage(i, first_elem + (i - j) * BLOCKSIZE, BLOCKSIZE, s, t,
-                           h, A, b, b_hat, c, y, err, dy, w);
+        block_scatter_interm_stage(i, first_elem + (i - j) * BLOCKSIZE,
+                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                   dy, w);
 
-      block_last_stage(first_elem + (s - 1 - j) * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                       b, b_hat, c, y, err, dy, w, &err_max);
+      block_scatter_last_stage(first_elem + (s - 1 - j) * BLOCKSIZE, BLOCKSIZE,
+                               s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
     }
 
     wait_for_pred(me, s - 1, mutex_last);
-    block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                     &err_max);
+    block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                             err, dy, w, &err_max);
     release_pred(me, s - 1, mutex_last);
 
     if (me_is_even)
@@ -194,37 +198,42 @@ void *solver_thread(void *argument)
 
   finalize_high:
 
-    block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                      b_hat, c, y, err, dy, w);
+    block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A,
+                              b, b_hat, c, y, err, dy, w);
     last_block_complete(me, 1, mutex_last);
 
     for (i = 1; i < s - 1; i++)
-      block_interm_stage(i, last_elem - BLOCKSIZE + 1 - i * BLOCKSIZE,
-                         BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1 - i * BLOCKSIZE,
+                                 BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
+                                 w);
 
-    block_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1) * BLOCKSIZE, BLOCKSIZE,
-                     s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
+    block_scatter_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1) * BLOCKSIZE,
+                             BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
+                             &err_max);
 
     for (j = 1; j < s - 1; j++)
     {
       wait_for_succ(me, j, mutex_first);
-      block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                         b_hat, c, y, err, dy, w);
+      block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                 h, A, b, b_hat, c, y, err, dy, w);
       release_succ(me, j, mutex_first);
       last_block_complete(me, j + 1, mutex_last);
 
       for (i = j + 1; i < s - 1; i++)
-        block_interm_stage(i, last_elem - BLOCKSIZE + 1 - (i - j) * BLOCKSIZE,
-                           BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+        block_scatter_interm_stage(i,
+                                   last_elem - BLOCKSIZE + 1 - (i -
+                                                                j) * BLOCKSIZE,
+                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                   dy, w);
 
-      block_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1 - j) * BLOCKSIZE,
-                       BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                       &err_max);
+      block_scatter_last_stage(last_elem - BLOCKSIZE + 1 -
+                               (s - 1 - j) * BLOCKSIZE, BLOCKSIZE, s, t, h, b,
+                               b_hat, c, y, err, dy, w, &err_max);
     }
 
     wait_for_succ(me, s - 1, mutex_first);
-    block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b, b_hat, c,
-                     y, err, dy, w, &err_max);
+    block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
+                             b_hat, c, y, err, dy, w, &err_max);
     release_succ(me, s - 1, mutex_first);
 
     if (me_is_even)

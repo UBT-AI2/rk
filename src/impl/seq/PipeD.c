@@ -66,14 +66,15 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (j = 0; j < k1; j += BLOCKSIZE)
     {
-      block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                dy, w);
 
       l = j, i = 1;
       while (l > 0)
       {
         l -= BLOCKSIZE;
-        block_interm_stage(i, l, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                           w);
+        block_scatter_interm_stage(i, l, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                   err, dy, w);
         i++;
       }
     }
@@ -82,18 +83,19 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (i = k1; i < ode_size; i += k4)
     {
-      block_first_stage(i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_scatter_first_stage(i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                dy, w);
       i -= BLOCKSIZE;
 
       for (j = 1; j < s - 1; j++)
       {
-        block_interm_stage(j, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                           w);
+        block_scatter_interm_stage(j, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                   err, dy, w);
         i -= BLOCKSIZE;
       }
 
-      block_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                       &err_max);
+      block_scatter_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy,
+                               w, &err_max);
     }
 
     /* finalization */
@@ -101,10 +103,10 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     for (i = 1; i < s; i++)
     {
       for (j = i, l = k2; j < s - 1; j++, l -= BLOCKSIZE)
-        block_interm_stage(j, l, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                           w);
-      block_last_stage(l, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                       &err_max);
+        block_scatter_interm_stage(j, l, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                   err, dy, w);
+      block_scatter_last_stage(l, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy,
+                               w, &err_max);
     }
 
     /* step control */

@@ -58,36 +58,17 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   {
     /* stages */
 
-    for (j = 0; j < ode_size; j++)
-      v[0][j] = h * ode_eval_comp(j, t + c[0] * h, y);
+    block_rhs(0, 0, ode_size, t, h, c, y, v);
 
     for (l = 1; l < s; l++)
     {
-      for (j = 0; j < ode_size; j++)
-        w[j] = y[j] + A[l][0] * v[0][j];
-
-      for (i = 1; i < l; i++)
-        for (j = 0; j < ode_size; j++)
-          w[j] += A[l][i] * v[i][j];
-
-      for (j = 0; j < ode_size; j++)
-        v[l][j] = h * ode_eval_comp(j, t + c[l] * h, w);
+      block_gather_interm_stage(l, 0, ode_size, A, y, w, v);
+      block_rhs(l, 0, ode_size, t, h, c, w, v);
     }
 
     /* output approximation */
 
-    for (j = 0; j < ode_size; j++)
-    {
-      err[j] = b_hat[0] * v[0][j];
-      dy[j] = b[0] * v[0][j];
-    }
-
-    for (i = 1; i < s; i++)
-      for (j = 0; j < ode_size; j++)
-      {
-        err[j] += b_hat[i] * v[i][j];
-        dy[j] += b[i] * v[i][j];
-      }
+    block_gather_output(0, ode_size, s, b, b_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = 0; j < ode_size; j++)

@@ -137,8 +137,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         complete_recv_pred(&recv_req_pred, &status);
 
-        block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                          err, dy, w);
+        block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                  c, y, err, dy, w);
         start_recv_pred(w[1], first_elem, BLOCKSIZE, 1, &recv_req_pred);
         complete_send_pred(&send_req_pred, &status);
         start_send_pred(w[1], first_elem, BLOCKSIZE, 1, &send_req_pred);
@@ -146,17 +146,17 @@ void solver(double t0, double te, double *y0, double *y, double tol)
         for (j = first_elem + BLOCKSIZE; j < last_elem - BLOCKSIZE + 1;
              j += BLOCKSIZE)
         {
-          block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                            w);
+          block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                    err, dy, w);
 
           for (i = j - BLOCKSIZE, k = 1; i > first_elem; i -= BLOCKSIZE)
-            block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                               err, dy, w);
+            block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                       c, y, err, dy, w);
 
           complete_recv_pred(&recv_req_pred, &status);
 
-          block_interm_stage(k++, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                             c, y, err, dy, w);
+          block_scatter_interm_stage(k++, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                     b_hat, c, y, err, dy, w);
 
           start_recv_pred(w[k], first_elem, BLOCKSIZE, k, &recv_req_pred);
           complete_send_pred(&send_req_pred, &status);
@@ -168,8 +168,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         complete_recv_succ(&recv_req_succ, &status);
 
-        block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                          b_hat, c, y, err, dy, w);
+        block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                  A, b, b_hat, c, y, err, dy, w);
         start_recv_succ(w[1], last_elem, BLOCKSIZE, 1, &recv_req_succ);
         complete_send_succ(&send_req_succ, &status);
         start_send_succ(w[1], last_elem, BLOCKSIZE, 1, &send_req_succ);
@@ -177,15 +177,15 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         for (i = last_elem - 2 * BLOCKSIZE + 1, k = 1; i > first_elem;
              i -= BLOCKSIZE)
-          block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                             dy, w);
+          block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                     y, err, dy, w);
 
         if (num_blocks < s)
         {
           complete_recv_pred(&recv_req_pred, &status);
 
-          block_interm_stage(num_blocks - 1, first_elem, BLOCKSIZE, s, t, h, A,
-                             b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(num_blocks - 1, first_elem, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
 
           start_recv_pred(w[num_blocks], first_elem, BLOCKSIZE, num_blocks,
                           &recv_req_pred);
@@ -198,8 +198,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
             k = j + 1;
 
             complete_recv_succ(&recv_req_succ, &status);
-            block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                               A, b, b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                       s, t, h, A, b, b_hat, c, y, err, dy, w);
             start_recv_succ(w[k], last_elem, BLOCKSIZE, k, &recv_req_succ);
             complete_send_succ(&send_req_succ, &status);
             start_send_succ(w[k], last_elem, BLOCKSIZE, k, &send_req_succ);
@@ -207,12 +207,12 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
             for (i = last_elem - 2 * BLOCKSIZE + 1; i > first_elem;
                  i -= BLOCKSIZE)
-              block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                 err, dy, w);
+              block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                         b_hat, c, y, err, dy, w);
 
             complete_recv_pred(&recv_req_pred, &status);
-            block_interm_stage(k++, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                               c, y, err, dy, w);
+            block_scatter_interm_stage(k++, first_elem, BLOCKSIZE, s, t, h, A,
+                                       b, b_hat, c, y, err, dy, w);
             start_recv_pred(w[k], first_elem, BLOCKSIZE, k, &recv_req_pred);
             complete_send_pred(&send_req_pred, &status);
             start_send_pred(w[k], first_elem, BLOCKSIZE, k, &send_req_pred);
@@ -221,8 +221,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
           k = s - num_blocks;
 
           complete_recv_succ(&recv_req_succ, &status);
-          block_interm_stage(k++, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                             A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(k++, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                     s, t, h, A, b, b_hat, c, y, err, dy, w);
           start_recv_succ(w[k], last_elem, BLOCKSIZE, k, &recv_req_succ);
           complete_send_succ(&send_req_succ, &status);
           start_send_succ(w[k], last_elem, BLOCKSIZE, k, &send_req_succ);
@@ -230,13 +230,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
           for (i = last_elem - 2 * BLOCKSIZE + 1; i > first_elem;
                i -= BLOCKSIZE)
-            block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                               err, dy, w);
+            block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                       c, y, err, dy, w);
         }
 
         complete_recv_pred(&recv_req_pred, &status);
-        block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
-                         dy, w, &my_err_max);
+        block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                 err, dy, w, &my_err_max);
         complete_send_pred(&send_req_pred, &status);
 
         /* triangle (1, s-1) -- (num_blocks-1, s-num_blocks+1) -- (s-1, s-1) */
@@ -246,24 +246,24 @@ void solver(double t0, double te, double *y0, double *y, double tol)
           k = j + 1;
 
           complete_recv_succ(&recv_req_succ, &status);
-          block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                             A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
           start_recv_succ(w[k], last_elem, BLOCKSIZE, k, &recv_req_succ);
           complete_send_succ(&send_req_succ, &status);
           start_send_succ(w[k], last_elem, BLOCKSIZE, k, &send_req_succ);
 
 
           for (i = last_elem - 2 * BLOCKSIZE + 1; k < s - 1; i -= BLOCKSIZE)
-            block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                               err, dy, w);
+            block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                       c, y, err, dy, w);
 
-          block_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                           &my_err_max);
+          block_scatter_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
+                                   dy, w, &my_err_max);
         }
 
         complete_recv_succ(&recv_req_succ, &status);
-        block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                         b_hat, c, y, err, dy, w, &my_err_max);
+        block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                 b, b_hat, c, y, err, dy, w, &my_err_max);
         complete_send_succ(&send_req_succ, &status);
       }
       else                      /* odd processor */
@@ -272,8 +272,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
            (num_blocks-1, num_blocks-2) */
 
         complete_recv_succ(&recv_req_succ, &status);
-        block_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                  A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                          s, t, h, A, b, b_hat, c, y, err, dy,
+                                          w);
         start_recv_succ(w[1], last_elem, BLOCKSIZE, 1, &recv_req_succ);
         complete_send_succ(&send_req_succ, &status);
         start_send_succ(w[1], last_elem, BLOCKSIZE, 1, &send_req_succ);
@@ -281,17 +282,18 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         for (j = last_elem - 2 * BLOCKSIZE + 1; j > first_elem; j -= BLOCKSIZE)
         {
-          block_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                    err, dy, w);
+          block_scatter_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                            c, y, err, dy, w);
 
           for (i = j + BLOCKSIZE, k = 1; i < last_elem - BLOCKSIZE + 1;
                i += BLOCKSIZE)
-            block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                       c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                               b_hat, c, y, err, dy, w);
 
           complete_recv_succ(&recv_req_succ, &status);
-          block_interm_stage_reverse(k++, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
-                                     s, t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(k++, last_elem - BLOCKSIZE + 1,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
           start_recv_succ(w[k], last_elem, BLOCKSIZE, k, &recv_req_succ);
           complete_send_succ(&send_req_succ, &status);
           start_send_succ(w[k], last_elem, BLOCKSIZE, k, &send_req_succ);
@@ -303,24 +305,25 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         complete_recv_pred(&recv_req_pred, &status);
 
-        block_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                  c, y, err, dy, w);
+        block_scatter_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b,
+                                          b_hat, c, y, err, dy, w);
         start_recv_pred(w[1], first_elem, BLOCKSIZE, 1, &recv_req_pred);
         complete_send_pred(&send_req_pred, &status);
         start_send_pred(w[1], first_elem, BLOCKSIZE, 1, &send_req_pred);
 
         for (i = first_elem + BLOCKSIZE, k = 1; i < last_elem - BLOCKSIZE + 1;
              i += BLOCKSIZE)
-          block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                     y, err, dy, w);
+          block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                             b_hat, c, y, err, dy, w);
 
         if (num_blocks < s)
         {
           complete_recv_succ(&recv_req_succ, &status);
 
-          block_interm_stage_reverse(num_blocks - 1, last_elem - BLOCKSIZE + 1,
-                                     BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                     dy, w);
+          block_scatter_interm_stage_reverse(num_blocks - 1,
+                                             last_elem - BLOCKSIZE + 1,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
           start_recv_succ(w[num_blocks], last_elem, BLOCKSIZE, num_blocks,
                           &recv_req_succ);
           complete_send_succ(&send_req_succ, &status);
@@ -332,20 +335,22 @@ void solver(double t0, double te, double *y0, double *y, double tol)
             k = j + 1;
 
             complete_recv_pred(&recv_req_pred, &status);
-            block_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t,
+                                               h, A, b, b_hat, c, y, err, dy,
+                                               w);
             start_recv_pred(w[k], first_elem, BLOCKSIZE, k, &recv_req_pred);
             complete_send_pred(&send_req_pred, &status);
             start_send_pred(w[k], first_elem, BLOCKSIZE, k, &send_req_pred);
 
             for (i = first_elem + BLOCKSIZE; i < last_elem - BLOCKSIZE + 1;
                  i += BLOCKSIZE)
-              block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                         b_hat, c, y, err, dy, w);
+              block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A,
+                                                 b, b_hat, c, y, err, dy, w);
 
             complete_recv_succ(&recv_req_succ, &status);
-            block_interm_stage(k++, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
-                               h, A, b, b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage(k++, last_elem - BLOCKSIZE + 1,
+                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                       err, dy, w);
             start_recv_succ(w[k], last_elem, BLOCKSIZE, k, &recv_req_succ);
             complete_send_succ(&send_req_succ, &status);
             start_send_succ(w[k], last_elem, BLOCKSIZE, k, &send_req_succ);
@@ -355,21 +360,22 @@ void solver(double t0, double te, double *y0, double *y, double tol)
           k = s - num_blocks;
 
           complete_recv_pred(&recv_req_pred, &status);
-          block_interm_stage_reverse(k++, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                     b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(k++, first_elem, BLOCKSIZE, s, t,
+                                             h, A, b, b_hat, c, y, err, dy, w);
           start_recv_pred(w[k], first_elem, BLOCKSIZE, k, &recv_req_pred);
           complete_send_pred(&send_req_pred, &status);
           start_send_pred(w[k], first_elem, BLOCKSIZE, k, &send_req_pred);
 
           for (i = first_elem + BLOCKSIZE; i < last_elem - BLOCKSIZE + 1;
                i += BLOCKSIZE)
-            block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                       c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                               b_hat, c, y, err, dy, w);
         }
 
         complete_recv_succ(&recv_req_succ, &status);
-        block_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                 b, b_hat, c, y, err, dy, w, &my_err_max);
+        block_scatter_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                         s, t, h, b, b_hat, c, y, err, dy, w,
+                                         &my_err_max);
         complete_send_succ(&send_req_succ, &status);
 
         /* triangle (num_blocks-2, s-1) -- (0, s-num_blocks+1) -- (0, s-1) */
@@ -379,23 +385,23 @@ void solver(double t0, double te, double *y0, double *y, double tol)
           k = j + 1;
 
           complete_recv_pred(&recv_req_pred, &status);
-          block_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                     b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h,
+                                             A, b, b_hat, c, y, err, dy, w);
           start_recv_pred(w[k], first_elem, BLOCKSIZE, k, &recv_req_pred);
           complete_send_pred(&send_req_pred, &status);
           start_send_pred(w[k], first_elem, BLOCKSIZE, k, &send_req_pred);
 
           for (i = first_elem + BLOCKSIZE; k < s - 1; i += BLOCKSIZE)
-            block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                       c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                               b_hat, c, y, err, dy, w);
 
-          block_last_stage_reverse(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
-                                   dy, w, &my_err_max);
+          block_scatter_last_stage_reverse(i, BLOCKSIZE, s, t, h, b, b_hat, c,
+                                           y, err, dy, w, &my_err_max);
         }
 
         complete_recv_pred(&recv_req_pred, &status);
-        block_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
-                                 err, dy, w, &my_err_max);
+        block_scatter_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b,
+                                         b_hat, c, y, err, dy, w, &my_err_max);
         complete_send_pred(&send_req_pred, &status);
       }
     }
@@ -407,8 +413,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         complete_recv_pred(&recv_req_pred, &status);
 
-        block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                          err, dy, w);
+        block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                  c, y, err, dy, w);
 
         start_recv_pred(w[1], first_elem, BLOCKSIZE, 1, &recv_req_pred);
         complete_send_pred(&send_req_pred, &status);
@@ -416,16 +422,17 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         for (j = 1; j < s - 1; j++)
         {
-          block_first_stage(first_elem + j * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
-                            b, b_hat, c, y, err, dy, w);
+          block_scatter_first_stage(first_elem + j * BLOCKSIZE, BLOCKSIZE, s, t,
+                                    h, A, b, b_hat, c, y, err, dy, w);
           for (i = 1; i < j; i++)
-            block_interm_stage(i, first_elem + (j - i) * BLOCKSIZE, BLOCKSIZE,
-                               s, t, h, A, b, b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage(i, first_elem + (j - i) * BLOCKSIZE,
+                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                       err, dy, w);
 
           complete_recv_pred(&recv_req_pred, &status);
 
-          block_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                             y, err, dy, w);
+          block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                     b_hat, c, y, err, dy, w);
 
           start_recv_pred(w[j + 1], first_elem, BLOCKSIZE, j + 1,
                           &recv_req_pred);
@@ -434,16 +441,17 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                           &send_req_pred);
         }
 
-        block_first_stage(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                          A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE,
+                                  s, t, h, A, b, b_hat, c, y, err, dy, w);
         for (i = 1; i < j; i++)
-          block_interm_stage(i, first_elem + (s - 1 - i) * BLOCKSIZE, BLOCKSIZE,
-                             s, t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(i, first_elem + (s - 1 - i) * BLOCKSIZE,
+                                     BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                     dy, w);
 
         complete_recv_pred(&recv_req_pred, &status);
 
-        block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
-                         dy, w, &my_err_max);
+        block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                 err, dy, w, &my_err_max);
 
         complete_send_pred(&send_req_pred, &status);
 
@@ -452,21 +460,21 @@ void solver(double t0, double te, double *y0, double *y, double tol)
         for (j = first_elem + s * BLOCKSIZE; j < last_elem - BLOCKSIZE + 1;
              j += BLOCKSIZE)
         {
-          block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                            w);
+          block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                    err, dy, w);
           for (i = 1; i < s - 1; i++)
-            block_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
-                               b_hat, c, y, err, dy, w);
-          block_last_stage(j - (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h, b,
-                           b_hat, c, y, err, dy, w, &my_err_max);
+            block_scatter_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                       A, b, b_hat, c, y, err, dy, w);
+          block_scatter_last_stage(j - (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                   b, b_hat, c, y, err, dy, w, &my_err_max);
         }
 
         /* finalize the pipeline on the side with higher index */
 
         complete_recv_succ(&recv_req_succ, &status);
 
-        block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                          b_hat, c, y, err, dy, w);
+        block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                  A, b, b_hat, c, y, err, dy, w);
 
         start_recv_succ(w[1], last_elem, BLOCKSIZE, 1, &recv_req_succ);
         complete_send_succ(&send_req_succ, &status);
@@ -474,19 +482,21 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
 
         for (i = 1; i < s - 1; i++)
-          block_interm_stage(i, last_elem - BLOCKSIZE + 1 - i * BLOCKSIZE,
-                             BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(i,
+                                     last_elem - BLOCKSIZE + 1 - i * BLOCKSIZE,
+                                     BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                     dy, w);
 
-        block_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1) * BLOCKSIZE,
-                         BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                         &my_err_max);
+        block_scatter_last_stage(last_elem - BLOCKSIZE + 1 -
+                                 (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h, b,
+                                 b_hat, c, y, err, dy, w, &my_err_max);
 
         for (j = 1; j < s - 1; j++)
         {
           complete_recv_succ(&recv_req_succ, &status);
 
-          block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                             A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
 
           start_recv_succ(w[j + 1], last_elem, BLOCKSIZE, j + 1,
                           &recv_req_succ);
@@ -496,20 +506,21 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
 
           for (i = j + 1; i < s - 1; i++)
-            block_interm_stage(i,
-                               last_elem - BLOCKSIZE + 1 - (i - j) * BLOCKSIZE,
-                               BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                               w);
+            block_scatter_interm_stage(i,
+                                       last_elem - BLOCKSIZE + 1 - (i -
+                                                                    j) *
+                                       BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w);
 
-          block_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1 - j) * BLOCKSIZE,
-                           BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                           &my_err_max);
+          block_scatter_last_stage(last_elem - BLOCKSIZE + 1 -
+                                   (s - 1 - j) * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                   b, b_hat, c, y, err, dy, w, &my_err_max);
         }
 
         complete_recv_succ(&recv_req_succ, &status);
 
-        block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                         b_hat, c, y, err, dy, w, &my_err_max);
+        block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                 b, b_hat, c, y, err, dy, w, &my_err_max);
 
         complete_send_succ(&send_req_succ, &status);
       }
@@ -519,8 +530,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         complete_recv_succ(&recv_req_succ, &status);
 
-        block_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                  A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                          s, t, h, A, b, b_hat, c, y, err, dy,
+                                          w);
 
         start_recv_succ(w[1], last_elem, BLOCKSIZE, 1, &recv_req_succ);
         complete_send_succ(&send_req_succ, &status);
@@ -529,20 +541,21 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
         for (j = 1; j < s - 1; j++)
         {
-          block_first_stage_reverse(last_elem - BLOCKSIZE + 1 - j * BLOCKSIZE,
-                                    BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                    dy, w);
+          block_scatter_first_stage_reverse(last_elem - BLOCKSIZE + 1 -
+                                            j * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                            A, b, b_hat, c, y, err, dy, w);
           for (i = 1; i < j; i++)
-            block_interm_stage_reverse(i,
-                                       last_elem - BLOCKSIZE + 1 - (j -
-                                                                    i) *
-                                       BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(i,
+                                               last_elem - BLOCKSIZE + 1 - (j -
+                                                                            i) *
+                                               BLOCKSIZE, BLOCKSIZE, s, t, h, A,
+                                               b, b_hat, c, y, err, dy, w);
 
           complete_recv_succ(&recv_req_succ, &status);
 
-          block_interm_stage_reverse(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                     t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(j, last_elem - BLOCKSIZE + 1,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
 
           start_recv_succ(w[j + 1], last_elem, BLOCKSIZE, j + 1,
                           &recv_req_succ);
@@ -551,20 +564,22 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                           &send_req_succ);
         }
 
-        block_first_stage_reverse(last_elem - BLOCKSIZE + 1 -
-                                  (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
-                                  b_hat, c, y, err, dy, w);
+        block_scatter_first_stage_reverse(last_elem - BLOCKSIZE + 1 -
+                                          (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t,
+                                          h, A, b, b_hat, c, y, err, dy, w);
         for (i = 1; i < j; i++)
-          block_interm_stage_reverse(i,
-                                     last_elem - BLOCKSIZE + 1 - (s - 1 -
-                                                                  i) *
-                                     BLOCKSIZE, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                     c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(i,
+                                             last_elem - BLOCKSIZE + 1 - (s -
+                                                                          1 -
+                                                                          i) *
+                                             BLOCKSIZE, BLOCKSIZE, s, t, h, A,
+                                             b, b_hat, c, y, err, dy, w);
 
         complete_recv_succ(&recv_req_succ, &status);
 
-        block_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                 b, b_hat, c, y, err, dy, w, &my_err_max);
+        block_scatter_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                         s, t, h, b, b_hat, c, y, err, dy, w,
+                                         &my_err_max);
 
         complete_send_succ(&send_req_succ, &status);
 
@@ -573,39 +588,43 @@ void solver(double t0, double te, double *y0, double *y, double tol)
         for (j = last_elem - BLOCKSIZE + 1 - s * BLOCKSIZE; j > first_elem;
              j -= BLOCKSIZE)
         {
-          block_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                    err, dy, w);
+          block_scatter_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                            c, y, err, dy, w);
           for (i = 1; i < s - 1; i++)
-            block_interm_stage_reverse(i, j + i * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                                       A, b, b_hat, c, y, err, dy, w);
-          block_last_stage_reverse(j + (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                                   b, b_hat, c, y, err, dy, w, &my_err_max);
+            block_scatter_interm_stage_reverse(i, j + i * BLOCKSIZE, BLOCKSIZE,
+                                               s, t, h, A, b, b_hat, c, y, err,
+                                               dy, w);
+          block_scatter_last_stage_reverse(j + (s - 1) * BLOCKSIZE, BLOCKSIZE,
+                                           s, t, h, b, b_hat, c, y, err, dy, w,
+                                           &my_err_max);
         }
 
         /* finalize the pipeline on the side with lower index */
 
         complete_recv_pred(&recv_req_pred, &status);
 
-        block_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                  c, y, err, dy, w);
+        block_scatter_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b,
+                                          b_hat, c, y, err, dy, w);
 
         start_recv_pred(w[1], first_elem, BLOCKSIZE, 1, &recv_req_pred);
         complete_send_pred(&send_req_pred, &status);
         start_send_pred(w[1], first_elem, BLOCKSIZE, 1, &send_req_pred);
 
         for (i = 1; i < s - 1; i++)
-          block_interm_stage_reverse(i, first_elem + i * BLOCKSIZE, BLOCKSIZE,
-                                     s, t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(i, first_elem + i * BLOCKSIZE,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
 
-        block_last_stage_reverse(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE, s,
-                                 t, h, b, b_hat, c, y, err, dy, w, &my_err_max);
+        block_scatter_last_stage_reverse(first_elem + (s - 1) * BLOCKSIZE,
+                                         BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                         err, dy, w, &my_err_max);
 
         for (j = 1; j < s - 1; j++)
         {
           complete_recv_pred(&recv_req_pred, &status);
 
-          block_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                     b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h,
+                                             A, b, b_hat, c, y, err, dy, w);
 
           start_recv_pred(w[j + 1], first_elem, BLOCKSIZE, j + 1,
                           &recv_req_pred);
@@ -614,19 +633,20 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                           &send_req_pred);
 
           for (i = j + 1; i < s - 1; i++)
-            block_interm_stage_reverse(i, first_elem + (i - j) * BLOCKSIZE,
-                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                       err, dy, w);
+            block_scatter_interm_stage_reverse(i,
+                                               first_elem + (i - j) * BLOCKSIZE,
+                                               BLOCKSIZE, s, t, h, A, b, b_hat,
+                                               c, y, err, dy, w);
 
-          block_last_stage_reverse(first_elem + (s - 1 - j) * BLOCKSIZE,
-                                   BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy,
-                                   w, &my_err_max);
+          block_scatter_last_stage_reverse(first_elem + (s - 1 - j) * BLOCKSIZE,
+                                           BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                           err, dy, w, &my_err_max);
         }
 
         complete_recv_pred(&recv_req_pred, &status);
 
-        block_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
-                                 err, dy, w, &my_err_max);
+        block_scatter_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b,
+                                         b_hat, c, y, err, dy, w, &my_err_max);
 
         complete_send_pred(&send_req_pred, &status);
       }

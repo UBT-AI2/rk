@@ -25,7 +25,7 @@ typedef struct
 {
   double t0, te, tol;
 
-  double *y, *y0, **v;
+  double *y, *y0, **w;
   double *err, *dy;
 
   double **A, *b, *b_hat, *c;
@@ -50,10 +50,10 @@ typedef struct
 
 void *solver_thread(void *argument)
 {
-  double **v, *w, *y, *y0, *y_old, *err, *dy;
+  double **w, *y, *y0, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int j, l, s, ord, first_elem, last_elem, num_elems, me;
+  int i, s, ord, first_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
@@ -68,7 +68,7 @@ void *solver_thread(void *argument)
 
   y0 = shared->y0;
   y = shared->y;
-  v = shared->v;
+  w = shared->w;
   err = shared->err;
   dy = shared->dy;
 
@@ -85,9 +85,10 @@ void *solver_thread(void *argument)
 
   first_elem = shared->elem_offset[me];
   num_elems = shared->elem_length[me];
-  last_elem = first_elem + num_elems - 1;
 
-  w = y_old = dy;
+  y_old = dy;
+
+  v = MALLOC(BLOCKSIZE, double);
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
@@ -99,26 +100,21 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    block_rhs(0, first_elem, num_elems, t, h, c, y, v);
-
-    for (l = 1; l < s; l++)
-    {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
-      barrier_wait(bar);
-      block_rhs(l, first_elem, num_elems, t, h, c, w, v);
-      barrier_wait(bar);
-    }
-
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
-
     err_max = 0.0;
-    for (j = first_elem; j <= last_elem; j++)
+
+    tiled_block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat,
+                                    c, y, err, dy, w, v);
+
+    for (i = 1; i < s - 1; i++)
     {
-      double yj_old = y[j];
-      y[j] += dy[j];
-      y_old[j] = yj_old;        /* y_old and dy occupy the same space */
-      update_error_max(&err_max, err[j], y[j], yj_old);
+      barrier_wait(bar);
+      tiled_block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
     }
+
+    barrier_wait(bar);
+    tiled_block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c,
+                                   y, err, dy, w, v, &err_max);
 
     err_max = reduction_max(red, err_max);
 
@@ -135,6 +131,8 @@ void *solver_thread(void *argument)
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
 
+  FREE(v);
+
   return NULL;
 }
 
@@ -150,7 +148,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: A (spatial locality)\n");
+  printf("Implementation variant: D (temporal locality of reads)\n");
   printf("Number of threads: %d\n", threads);
 
   arg = MALLOC(threads, arg_t);
@@ -177,7 +175,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->s = s;
   shared->ord = ord;
 
-  ALLOC2D(shared->v, s, ode_size, double);
+  ALLOC2D(shared->w, s, ode_size, double);
   shared->err = MALLOC(ode_size, double);
   shared->dy = MALLOC(ode_size, double);
 
@@ -208,7 +206,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
   FREE(shared->b_hat);
 
-  FREE2D(shared->v);
+  FREE2D(shared->w);
   FREE(shared->err);
   FREE(shared->dy);
 

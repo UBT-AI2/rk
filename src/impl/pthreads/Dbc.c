@@ -113,36 +113,37 @@ void *solver_thread(void *argument)
 
     /* evaluate the inner blocks of the first stage */
 
-    block_first_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE, s, t,
-                      h, A, b, b_hat, c, y, err, dy, w);
+    block_scatter_first_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
+                              s, t, h, A, b, b_hat, c, y, err, dy, w);
 
     /* evaluate first block of the first stage and send result to the
        previous processor */
 
-    block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                      dy, w);
+    block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                              err, dy, w);
     first_block_complete(me, 1, mutex_first);
 
     /* evaluate last block of the second stage and send result to the
        next processor */
 
-    block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                      b_hat, c, y, err, dy, w);
+    block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A,
+                              b, b_hat, c, y, err, dy, w);
     last_block_complete(me, 1, mutex_last);
 
     for (i = 1; i < s - 1; i++)
     {
       /* evaluate the inner blocks of stage i */
 
-      block_interm_stage(i, first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
-                         s, t, h, A, b, b_hat, c, y, err, dy, w);
+      block_scatter_interm_stage(i, first_elem + BLOCKSIZE,
+                                 num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
+                                 b_hat, c, y, err, dy, w);
 
       /* evaluate first block of stage i and send result to the
          previous processor */
 
       wait_for_pred(me, i, mutex_last);
-      block_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                         err, dy, w);
+      block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                 c, y, err, dy, w);
       first_block_complete(me, i + 1, mutex_first);
       release_pred(me, i, mutex_last);
 
@@ -150,29 +151,29 @@ void *solver_thread(void *argument)
          processor */
 
       wait_for_succ(me, i, mutex_first);
-      block_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                         b_hat, c, y, err, dy, w);
+      block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                 h, A, b, b_hat, c, y, err, dy, w);
       last_block_complete(me, i + 1, mutex_last);
       release_succ(me, i, mutex_first);
     }
 
     /* evaluate the inner blocks of stage s - 1 */
 
-    block_last_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE, s, t, h,
-                     b, b_hat, c, y, err, dy, w, &err_max);
+    block_scatter_last_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
+                             s, t, h, b, b_hat, c, y, err, dy, w, &err_max);
 
     /* evaluate first block of stage s - 1 */
 
     wait_for_pred(me, s - 1, mutex_last);
-    block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                     &err_max);
+    block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                             err, dy, w, &err_max);
     release_pred(me, s - 1, mutex_last);
 
     /* evaluate last block of stage s - 1 */
 
     wait_for_succ(me, s - 1, mutex_first);
-    block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b, b_hat, c,
-                     y, err, dy, w, &err_max);
+    block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
+                             b_hat, c, y, err, dy, w, &err_max);
     release_succ(me, s - 1, mutex_first);
 
     err_max = reduction_max(red, err_max);

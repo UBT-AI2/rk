@@ -25,16 +25,19 @@ typedef struct
 {
   double t0, te, tol;
 
-  double *y, *y0, **v;
+  double *y, *y0, **w;
   double *err, *dy;
 
   double **A, *b, *b_hat, *c;
   int s, ord;
 
-  int *elem_offset, *elem_length;
+  int *block_offset, *block_length;
 
   barrier_t barrier;
   reduction_t reduction;
+
+  mutex_lock_t **mutex_first;
+  mutex_lock_t **mutex_last;
 
 } shared_arg_t;
 
@@ -50,14 +53,15 @@ typedef struct
 
 void *solver_thread(void *argument)
 {
-  double **v, *w, *y, *y0, *y_old, *err, *dy;
+  double **w, *y, *y0, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int j, l, s, ord, first_elem, last_elem, num_elems, me;
+  int i, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
   shared_arg_t *shared;
+  mutex_lock_t **mutex_first, **mutex_last;
 
   me = ((arg_t *) argument)->me;
   shared = ((arg_t *) argument)->shared;
@@ -68,7 +72,7 @@ void *solver_thread(void *argument)
 
   y0 = shared->y0;
   y = shared->y;
-  v = shared->v;
+  w = shared->w;
   err = shared->err;
   dy = shared->dy;
 
@@ -83,11 +87,16 @@ void *solver_thread(void *argument)
   bar = &shared->barrier;
   red = &shared->reduction;
 
-  first_elem = shared->elem_offset[me];
-  num_elems = shared->elem_length[me];
+  mutex_first = shared->mutex_first;
+  mutex_last = shared->mutex_last;
+
+  first_elem = shared->block_offset[me] * BLOCKSIZE;
+  num_elems = shared->block_length[me] * BLOCKSIZE;
   last_elem = first_elem + num_elems - 1;
 
-  w = y_old = dy;
+  y_old = dy;
+
+  v = MALLOC(BLOCKSIZE, double);
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
@@ -99,26 +108,78 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    block_rhs(0, first_elem, num_elems, t, h, c, y, v);
-
-    for (l = 1; l < s; l++)
-    {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
-      barrier_wait(bar);
-      block_rhs(l, first_elem, num_elems, t, h, c, w, v);
-      barrier_wait(bar);
-    }
-
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
-
     err_max = 0.0;
-    for (j = first_elem; j <= last_elem; j++)
+
+    init_mutexes(me, s, mutex_first, mutex_last);
+    barrier_wait(bar);
+
+    /* evaluate the inner blocks of the first stage */
+
+    tiled_block_scatter_first_stage(first_elem + BLOCKSIZE,
+                                    num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
+                                    b_hat, c, y, err, dy, w, v);
+
+    /* evaluate first block of the first stage and send result to the
+       previous processor */
+
+    tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                    c, y, err, dy, w, v);
+    first_block_complete(me, 1, mutex_first);
+
+    /* evaluate last block of the second stage and send result to the
+       next processor */
+
+    tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                    h, A, b, b_hat, c, y, err, dy, w, v);
+    last_block_complete(me, 1, mutex_last);
+
+    for (i = 1; i < s - 1; i++)
     {
-      double yj_old = y[j];
-      y[j] += dy[j];
-      y_old[j] = yj_old;        /* y_old and dy occupy the same space */
-      update_error_max(&err_max, err[j], y[j], yj_old);
+      /* evaluate the inner blocks of stage i */
+
+      tiled_block_scatter_interm_stage(i, first_elem + BLOCKSIZE,
+                                       num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
+
+      /* evaluate first block of stage i and send result to the
+         previous processor */
+
+      wait_for_pred(me, i, mutex_last);
+      tiled_block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
+      first_block_complete(me, i + 1, mutex_first);
+      release_pred(me, i, mutex_last);
+
+      /* evaluate last block of stage i and send result to the next
+         processor */
+
+      wait_for_succ(me, i, mutex_first);
+      tiled_block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                       s, t, h, A, b, b_hat, c, y, err, dy, w,
+                                       v);
+      last_block_complete(me, i + 1, mutex_last);
+      release_succ(me, i, mutex_first);
     }
+
+    /* evaluate the inner blocks of stage s - 1 */
+
+    tiled_block_scatter_last_stage(first_elem + BLOCKSIZE,
+                                   num_elems - 2 * BLOCKSIZE, s, t, h, b, b_hat,
+                                   c, y, err, dy, w, v, &err_max);
+
+    /* evaluate first block of stage s - 1 */
+
+    wait_for_pred(me, s - 1, mutex_last);
+    tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c,
+                                   y, err, dy, w, v, &err_max);
+    release_pred(me, s - 1, mutex_last);
+
+    /* evaluate last block of stage s - 1 */
+
+    wait_for_succ(me, s - 1, mutex_first);
+    tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                   h, b, b_hat, c, y, err, dy, w, v, &err_max);
+    release_succ(me, s - 1, mutex_first);
 
     err_max = reduction_max(red, err_max);
 
@@ -126,14 +187,14 @@ void *solver_thread(void *argument)
 
     step_control(&t, &h, err_max, ord, tol, y + first_elem, y_old + first_elem,
                  num_elems, &steps_acc, &steps_rej);
-
-    barrier_wait(bar);
   }
 
   timer_stop(&timer);
 
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
+
+  FREE(v);
 
   return NULL;
 }
@@ -146,11 +207,12 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared_arg_t *shared;
   void **arglist;
   double **A, *b, *b_hat, *c;
-  int i, s, ord;
+  int i, j, s, ord;
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: A (spatial locality)\n");
+  printf("Implementation variant: Dbc (D with block-based communication)\n");
+  printf("communication)\n");
   printf("Number of threads: %d\n", threads);
 
   arg = MALLOC(threads, arg_t);
@@ -177,18 +239,29 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   shared->s = s;
   shared->ord = ord;
 
-  ALLOC2D(shared->v, s, ode_size, double);
+  ALLOC2D(shared->w, s, ode_size, double);
   shared->err = MALLOC(ode_size, double);
   shared->dy = MALLOC(ode_size, double);
 
   barrier_init(&shared->barrier, threads);
   reduction_init(&shared->reduction, threads);
 
-  shared->elem_offset = MALLOC(threads, int);
-  shared->elem_length = MALLOC(threads, int);
+  ALLOC2D(shared->mutex_first, threads, s, mutex_lock_t);
+  ALLOC2D(shared->mutex_last, threads, s, mutex_lock_t);
 
-  blockwise_distribution(threads, ode_size, shared->elem_offset,
-                         shared->elem_length);
+  for (i = 0; i < threads; i++)
+    for (j = 0; j < s; j++)
+    {
+      mutex_lock_init(&(shared->mutex_first[i][j]));
+      mutex_lock_init(&(shared->mutex_last[i][j]));
+    }
+
+  shared->block_offset = MALLOC(threads, int);
+  shared->block_length = MALLOC(threads, int);
+
+  assert(ode_size % BLOCKSIZE == 0);
+  blockwise_distribution(threads, ode_size / BLOCKSIZE, shared->block_offset,
+                         shared->block_length);
 
   for (i = 0; i < threads; i++)
   {
@@ -199,8 +272,18 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   run_threads(threads, solver_thread, arglist);
 
-  FREE(shared->elem_offset);
-  FREE(shared->elem_length);
+  for (i = 0; i < threads; i++)
+    for (j = 0; j < s; j++)
+    {
+      mutex_lock_destroy(&(shared->mutex_first[i][j]));
+      mutex_lock_destroy(&(shared->mutex_last[i][j]));
+    }
+
+  FREE2D(shared->mutex_first);
+  FREE2D(shared->mutex_last);
+
+  FREE(shared->block_offset);
+  FREE(shared->block_length);
 
   barrier_destroy(&shared->barrier);
   reduction_destroy(&shared->reduction);
@@ -208,7 +291,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
   FREE(shared->b_hat);
 
-  FREE2D(shared->v);
+  FREE2D(shared->w);
   FREE(shared->err);
   FREE(shared->dy);
 

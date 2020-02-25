@@ -159,44 +159,44 @@ void *solver_thread(void *argument)
 
         /* triangle (0, 0) -- (num_blocks-2, 0) -- (0, num_blocks-2) */
 
-        block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                          err, dy, w);
+        block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                  c, y, err, dy, w);
         first_block_complete(me, 1, mutex_first);
 
         for (j = first_elem + BLOCKSIZE; j < last_elem - BLOCKSIZE + 1;
              j += BLOCKSIZE)
         {
-          block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                            w);
+          block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                    err, dy, w);
 
           for (i = j - BLOCKSIZE, k = 1; i > first_elem; i -= BLOCKSIZE)
-            block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                               err, dy, w);
+            block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                       c, y, err, dy, w);
 
           get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          block_interm_stage(k, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                             y, err, dy, w);
+          block_scatter_interm_stage(k, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                     b_hat, c, y, err, dy, w);
           first_block_complete(me, ++k, mutex_first);
         }
 
         /* parallelogram (num_blocks-1, 0) -- (0, num_blocks-1) --
            (0, s-1) -- (num_blocks-1, s-num_blocks) */
 
-        block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                          b_hat, c, y, err, dy, w);
+        block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                  A, b, b_hat, c, y, err, dy, w);
         last_block_complete(me, 1, mutex_last);
 
         for (i = last_elem - 2 * BLOCKSIZE + 1, k = 1; i > first_elem;
              i -= BLOCKSIZE)
-          block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                             dy, w);
+          block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                     y, err, dy, w);
 
         if (num_blocks < s)
         {
           get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
 
-          block_interm_stage(num_blocks - 1, first_elem, BLOCKSIZE, s, t, h, A,
-                             b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(num_blocks - 1, first_elem, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
           first_block_complete(me, num_blocks, mutex_first);
 
           for (j = 1; j < s - num_blocks; j++)
@@ -204,38 +204,38 @@ void *solver_thread(void *argument)
             k = j + 1;
 
             get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-            block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                               A, b, b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                       s, t, h, A, b, b_hat, c, y, err, dy, w);
             last_block_complete(me, k, mutex_last);
 
             for (i = last_elem - 2 * BLOCKSIZE + 1; i > first_elem;
                  i -= BLOCKSIZE)
-              block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                 err, dy, w);
+              block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                         b_hat, c, y, err, dy, w);
 
             get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-            block_interm_stage(k, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                               c, y, err, dy, w);
+            block_scatter_interm_stage(k, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w);
             first_block_complete(me, ++k, mutex_first);
           }
 
           k = s - num_blocks;
 
           get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-          block_interm_stage(k, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                             A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(k, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
           last_block_complete(me, ++k, mutex_last);
 
           for (i = last_elem - 2 * BLOCKSIZE + 1; i > first_elem;
                i -= BLOCKSIZE)
-            block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                               err, dy, w);
+            block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                       c, y, err, dy, w);
         }
 
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
         unlock_init_phase(me, mutex_first);
-        block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
-                         dy, w, &err_max);
+        block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                 err, dy, w, &err_max);
 
         wait_pred_init_complete(me, mutex_last);
 
@@ -246,22 +246,22 @@ void *solver_thread(void *argument)
           k = j + 1;
 
           get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-          block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                             A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
           last_block_complete(me, k, mutex_last);
 
           for (i = last_elem - 2 * BLOCKSIZE + 1; k < s - 1; i -= BLOCKSIZE)
-            block_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                               err, dy, w);
+            block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                       c, y, err, dy, w);
 
-          block_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                           &err_max);
+          block_scatter_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
+                                   dy, w, &err_max);
         }
 
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
-        block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                         b_hat, c, y, err, dy, w, &err_max);
+        block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                 b, b_hat, c, y, err, dy, w, &err_max);
       }
       else                      /* !me_is_even */
       {
@@ -270,45 +270,48 @@ void *solver_thread(void *argument)
         /* triangle (0, 1) -- (num_blocks-1, 0) --
            (num_blocks-1, num_blocks-2) */
 
-        block_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                  A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                          s, t, h, A, b, b_hat, c, y, err, dy,
+                                          w);
         last_block_complete(me, 1, mutex_last);
 
         for (j = last_elem - 2 * BLOCKSIZE + 1; j > first_elem; j -= BLOCKSIZE)
         {
-          block_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                    err, dy, w);
+          block_scatter_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                            c, y, err, dy, w);
 
           for (i = j + BLOCKSIZE, k = 1; i < last_elem - BLOCKSIZE + 1;
                i += BLOCKSIZE)
-            block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                       c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                               b_hat, c, y, err, dy, w);
 
           get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-          block_interm_stage_reverse(k, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                     t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(k, last_elem - BLOCKSIZE + 1,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
           last_block_complete(me, ++k, mutex_last);
         }
 
         /* parallelogram (0, 0) -- (num_blocks-1, num_blocks-1) --
            (num_block-1, s-1) -- (0, s-num_blocks) */
 
-        block_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                  c, y, err, dy, w);
+        block_scatter_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b,
+                                          b_hat, c, y, err, dy, w);
         first_block_complete(me, 1, mutex_first);
 
         for (i = first_elem + BLOCKSIZE, k = 1; i < last_elem - BLOCKSIZE + 1;
              i += BLOCKSIZE)
-          block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                     y, err, dy, w);
+          block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                             b_hat, c, y, err, dy, w);
 
         if (num_blocks < s)     /* less than s blocks per thread */
         {
           get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
-          block_interm_stage_reverse(num_blocks - 1, last_elem - BLOCKSIZE + 1,
-                                     BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                     dy, w);
+          block_scatter_interm_stage_reverse(num_blocks - 1,
+                                             last_elem - BLOCKSIZE + 1,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
           last_block_complete(me, num_blocks, mutex_last);
 
           for (j = 1; j < s - num_blocks; j++)
@@ -316,38 +319,40 @@ void *solver_thread(void *argument)
             k = j + 1;
 
             get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-            block_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t,
+                                               h, A, b, b_hat, c, y, err, dy,
+                                               w);
             first_block_complete(me, k, mutex_first);
 
             for (i = first_elem + BLOCKSIZE; i < last_elem - BLOCKSIZE + 1;
                  i += BLOCKSIZE)
-              block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                         b_hat, c, y, err, dy, w);
+              block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A,
+                                                 b, b_hat, c, y, err, dy, w);
 
             get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-            block_interm_stage(k, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                               A, b, b_hat, c, y, err, dy, w);
+            block_scatter_interm_stage(k, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                       s, t, h, A, b, b_hat, c, y, err, dy, w);
             last_block_complete(me, ++k, mutex_last);
           }
 
           k = s - num_blocks;
 
           get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          block_interm_stage_reverse(k, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                     b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(k, first_elem, BLOCKSIZE, s, t, h,
+                                             A, b, b_hat, c, y, err, dy, w);
           first_block_complete(me, ++k, mutex_first);
 
           for (i = first_elem + BLOCKSIZE; i < last_elem - BLOCKSIZE + 1;
                i += BLOCKSIZE)
-            block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                       c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                               b_hat, c, y, err, dy, w);
         }
 
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
         unlock_init_phase(me, mutex_last);
-        block_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                 b, b_hat, c, y, err, dy, w, &err_max);
+        block_scatter_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                         s, t, h, b, b_hat, c, y, err, dy, w,
+                                         &err_max);
 
         wait_succ_init_complete(me, mutex_first);
 
@@ -358,22 +363,22 @@ void *solver_thread(void *argument)
           k = j + 1;
 
           get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          block_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                     b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h,
+                                             A, b, b_hat, c, y, err, dy, w);
           first_block_complete(me, k, mutex_first);
 
           for (i = first_elem + BLOCKSIZE; k < s - 1; i += BLOCKSIZE)
-            block_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                       c, y, err, dy, w);
+            block_scatter_interm_stage_reverse(k++, i, BLOCKSIZE, s, t, h, A, b,
+                                               b_hat, c, y, err, dy, w);
 
-          block_last_stage_reverse(i, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
-                                   dy, w, &err_max);
+          block_scatter_last_stage_reverse(i, BLOCKSIZE, s, t, h, b, b_hat, c,
+                                           y, err, dy, w, &err_max);
         }
 
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
 
-        block_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
-                                 err, dy, w, &err_max);
+        block_scatter_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b,
+                                         b_hat, c, y, err, dy, w, &err_max);
       }
     }
     else                        /* more than s blocks per thread  */
@@ -384,36 +389,38 @@ void *solver_thread(void *argument)
 
         lock_init_phase(me, mutex_first);
 
-        block_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                          err, dy, w);
+        block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                  c, y, err, dy, w);
         first_block_complete(me, 1, mutex_first);
 
         for (j = 1; j < s - 1; j++)
         {
-          block_first_stage(first_elem + j * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
-                            b, b_hat, c, y, err, dy, w);
+          block_scatter_first_stage(first_elem + j * BLOCKSIZE, BLOCKSIZE, s, t,
+                                    h, A, b, b_hat, c, y, err, dy, w);
           for (i = 1; i < j; i++)
-            block_interm_stage(i, first_elem + j * BLOCKSIZE - i * BLOCKSIZE,
-                               BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                               w);
+            block_scatter_interm_stage(i,
+                                       first_elem + j * BLOCKSIZE -
+                                       i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w);
           get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          block_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                             y, err, dy, w);
+          block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A, b,
+                                     b_hat, c, y, err, dy, w);
           first_block_complete(me, j + 1, mutex_first);
         }
 
-        block_first_stage(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                          A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE,
+                                  s, t, h, A, b, b_hat, c, y, err, dy, w);
         for (i = 1; i < j; i++)
-          block_interm_stage(i,
-                             first_elem + (s - 1) * BLOCKSIZE - i * BLOCKSIZE,
-                             BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(i,
+                                     first_elem + (s - 1) * BLOCKSIZE -
+                                     i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
+                                     b_hat, c, y, err, dy, w);
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
 
         unlock_init_phase(me, mutex_first);
 
-        block_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
-                         dy, w, &err_max);
+        block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                 err, dy, w, &err_max);
 
         wait_pred_init_complete(me, mutex_last);
 
@@ -422,47 +429,50 @@ void *solver_thread(void *argument)
         for (j = first_elem + s * BLOCKSIZE; j < last_elem - BLOCKSIZE + 1;
              j += BLOCKSIZE)
         {
-          block_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                            w);
+          block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                    err, dy, w);
           for (i = 1; i < s - 1; i++)
-            block_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
-                               b_hat, c, y, err, dy, w);
-          block_last_stage(j - (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h, b,
-                           b_hat, c, y, err, dy, w, &err_max);
+            block_scatter_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                       A, b, b_hat, c, y, err, dy, w);
+          block_scatter_last_stage(j - (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                   b, b_hat, c, y, err, dy, w, &err_max);
         }
 
         /* finalization */
 
-        block_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A, b,
-                          b_hat, c, y, err, dy, w);
+        block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                  A, b, b_hat, c, y, err, dy, w);
         last_block_complete(me, 1, mutex_last);
 
         for (i = 1; i < s - 1; i++)
-          block_interm_stage(i, last_elem - (i + 1) * BLOCKSIZE + 1, BLOCKSIZE,
-                             s, t, h, A, b, b_hat, c, y, err, dy, w);
-        block_last_stage(last_elem - s * BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                         b_hat, c, y, err, dy, w, &err_max);
+          block_scatter_interm_stage(i, last_elem - (i + 1) * BLOCKSIZE + 1,
+                                     BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
+                                     dy, w);
+        block_scatter_last_stage(last_elem - s * BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                 h, b, b_hat, c, y, err, dy, w, &err_max);
 
         for (j = 1; j < s - 1; j++)
         {
           get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-          block_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                             A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
+                                     t, h, A, b, b_hat, c, y, err, dy, w);
           last_block_complete(me, j + 1, mutex_last);
 
           for (i = j + 1; i < s - 1; i++)
-            block_interm_stage(i, last_elem - (i - j + 1) * BLOCKSIZE + 1,
-                               BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                               w);
+            block_scatter_interm_stage(i,
+                                       last_elem - (i - j + 1) * BLOCKSIZE + 1,
+                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                       err, dy, w);
 
-          block_last_stage(last_elem - (s - j) * BLOCKSIZE + 1, BLOCKSIZE, s, t,
-                           h, b, b_hat, c, y, err, dy, w, &err_max);
+          block_scatter_last_stage(last_elem - (s - j) * BLOCKSIZE + 1,
+                                   BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy,
+                                   w, &err_max);
         }
 
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
-        block_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                         b_hat, c, y, err, dy, w, &err_max);
+        block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
+                                 b, b_hat, c, y, err, dy, w, &err_max);
       }
       else                      /* !me_is_even */
       {
@@ -470,38 +480,44 @@ void *solver_thread(void *argument)
 
         lock_init_phase(me, mutex_last);
 
-        block_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                  A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                          s, t, h, A, b, b_hat, c, y, err, dy,
+                                          w);
         last_block_complete(me, 1, mutex_last);
 
         for (j = 1; j < s - 1; j++)
         {
-          block_first_stage_reverse(last_elem - (j + 1) * BLOCKSIZE + 1,
-                                    BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                    dy, w);
+          block_scatter_first_stage_reverse(last_elem - (j + 1) * BLOCKSIZE + 1,
+                                            BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                            y, err, dy, w);
           for (i = 1; i < j; i++)
-            block_interm_stage_reverse(i,
-                                       last_elem - (j - i + 1) * BLOCKSIZE + 1,
-                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                       err, dy, w);
+            block_scatter_interm_stage_reverse(i,
+                                               last_elem - (j - i +
+                                                            1) * BLOCKSIZE + 1,
+                                               BLOCKSIZE, s, t, h, A, b, b_hat,
+                                               c, y, err, dy, w);
           get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
-          block_interm_stage_reverse(j, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                     t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(j, last_elem - BLOCKSIZE + 1,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
           last_block_complete(me, j + 1, mutex_last);
         }
 
-        block_first_stage_reverse(last_elem - s * BLOCKSIZE + 1, BLOCKSIZE, s,
-                                  t, h, A, b, b_hat, c, y, err, dy, w);
+        block_scatter_first_stage_reverse(last_elem - s * BLOCKSIZE + 1,
+                                          BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                          err, dy, w);
         for (i = 1; i < j; i++)
-          block_interm_stage_reverse(i, last_elem - (s - i) * BLOCKSIZE + 1,
-                                     BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                     dy, w);
+          block_scatter_interm_stage_reverse(i,
+                                             last_elem - (s - i) * BLOCKSIZE +
+                                             1, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                             c, y, err, dy, w);
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
         unlock_init_phase(me, mutex_last);
 
-        block_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h,
-                                 b, b_hat, c, y, err, dy, w, &err_max);
+        block_scatter_last_stage_reverse(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
+                                         s, t, h, b, b_hat, c, y, err, dy, w,
+                                         &err_max);
 
         wait_succ_init_complete(me, mutex_first);
 
@@ -510,48 +526,53 @@ void *solver_thread(void *argument)
         for (j = last_elem - (s + 1) * BLOCKSIZE + 1; j > first_elem;
              j -= BLOCKSIZE)
         {
-          block_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                    err, dy, w);
+          block_scatter_first_stage_reverse(j, BLOCKSIZE, s, t, h, A, b, b_hat,
+                                            c, y, err, dy, w);
           for (i = 1; i < s - 1; i++)
-            block_interm_stage_reverse(i, j + i * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                                       A, b, b_hat, c, y, err, dy, w);
-          block_last_stage_reverse(j + (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                                   b, b_hat, c, y, err, dy, w, &err_max);
+            block_scatter_interm_stage_reverse(i, j + i * BLOCKSIZE, BLOCKSIZE,
+                                               s, t, h, A, b, b_hat, c, y, err,
+                                               dy, w);
+          block_scatter_last_stage_reverse(j + (s - 1) * BLOCKSIZE, BLOCKSIZE,
+                                           s, t, h, b, b_hat, c, y, err, dy, w,
+                                           &err_max);
         }
 
         /* finalization */
 
-        block_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                  c, y, err, dy, w);
+        block_scatter_first_stage_reverse(first_elem, BLOCKSIZE, s, t, h, A, b,
+                                          b_hat, c, y, err, dy, w);
         first_block_complete(me, 1, mutex_first);
 
         for (i = 1; i < s - 1; i++)
-          block_interm_stage_reverse(i, first_elem + i * BLOCKSIZE, BLOCKSIZE,
-                                     s, t, h, A, b, b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(i, first_elem + i * BLOCKSIZE,
+                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
+                                             y, err, dy, w);
 
-        block_last_stage_reverse(first_elem + (s - 1) * BLOCKSIZE, BLOCKSIZE, s,
-                                 t, h, b, b_hat, c, y, err, dy, w, &err_max);
+        block_scatter_last_stage_reverse(first_elem + (s - 1) * BLOCKSIZE,
+                                         BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                         err, dy, w, &err_max);
 
         for (j = 1; j < s - 1; j++)
         {
           get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          block_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                     b_hat, c, y, err, dy, w);
+          block_scatter_interm_stage_reverse(j, first_elem, BLOCKSIZE, s, t, h,
+                                             A, b, b_hat, c, y, err, dy, w);
           first_block_complete(me, j + 1, mutex_first);
 
           for (i = j + 1; i < s - 1; i++)
-            block_interm_stage_reverse(i, first_elem + (i - j) * BLOCKSIZE,
-                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                                       err, dy, w);
+            block_scatter_interm_stage_reverse(i,
+                                               first_elem + (i - j) * BLOCKSIZE,
+                                               BLOCKSIZE, s, t, h, A, b, b_hat,
+                                               c, y, err, dy, w);
 
-          block_last_stage_reverse(first_elem + (s - 1 - j) * BLOCKSIZE,
-                                   BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy,
-                                   w, &err_max);
+          block_scatter_last_stage_reverse(first_elem + (s - 1 - j) * BLOCKSIZE,
+                                           BLOCKSIZE, s, t, h, b, b_hat, c, y,
+                                           err, dy, w, &err_max);
         }
 
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-        block_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
-                                 err, dy, w, &err_max);
+        block_scatter_last_stage_reverse(first_elem, BLOCKSIZE, s, t, h, b,
+                                         b_hat, c, y, err, dy, w, &err_max);
       }
     }
 

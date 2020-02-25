@@ -23,8 +23,9 @@
 
 void solver(double t0, double te, double *y0, double *y, double tol)
 {
-  int i;
-  double **w, *y_old, *err, *dy;
+  int i, j, l;
+
+  double **v, *y_old, *err, *w, *dy;
   double **A, *b, *b_hat, *c;
   double err_max;
   int s, ord;
@@ -33,19 +34,20 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int steps_acc = 0, steps_rej = 0;
 
   printf("Solver type: sequential embedded Runge-Kutta method\n");
-  printf("Implementation variant: D (temporal locality of reads)\n");
+  printf
+    ("Implementation variant: AEblock (temporal and spatial locality of writes)\n");
 
   METHOD(&A, &b, &b_hat, &c, &s, &ord);
 
-  for (i = 0; i < s; i++)
+  for (i = 0; i < s; ++i)
     b_hat[i] = b[i] - b_hat[i];
 
-  ALLOC2D(w, s, ode_size, double);
+  ALLOC2D(v, s, ode_size, double);
 
-  err = MALLOC(ode_size, double);
   dy = MALLOC(ode_size, double);
+  err = MALLOC(ode_size, double);
 
-  y_old = dy;
+  w = y_old = dy;
 
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
@@ -55,17 +57,28 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    /* stages */
+
+    block_rhs(0, 0, ode_size, t, h, c, y, v);
+
+    for (l = 1; l < s; l++)
+    {
+      tiled_block_gather_interm_stage(l, 0, ode_size, A, y, w, v);
+      block_rhs(l, 0, ode_size, t, h, c, w, v);
+    }
+
+    /* output approximation */
+
+    tiled_block_gather_output(0, ode_size, s, b, b_hat, err, dy, v);
+
     err_max = 0.0;
-
-    block_scatter_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy,
-                              w);
-
-    for (i = 1; i < s - 1; i++)
-      block_scatter_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c, y,
-                                 err, dy, w);
-
-    block_scatter_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err, dy, w,
-                             &err_max);
+    for (j = 0; j < ode_size; j++)
+    {
+      double yj_old = y[j];
+      y[j] += dy[j];
+      y_old[j] = yj_old;        /* y_old and dy occupy the same space */
+      update_error_max(&err_max, err[j], y[j], yj_old);
+    }
 
     /* step control */
 
@@ -77,9 +90,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
 
-  FREE2D(w);
-  FREE(err);
+  FREE2D(v);
   FREE(dy);
+  FREE(err);
 
   print_statistics(timer, steps_acc, steps_rej);
 }

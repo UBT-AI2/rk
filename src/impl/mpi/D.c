@@ -81,8 +81,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                    MPI_COMM_WORLD);
 
     swap_vectors(&y, &gathered_w);
-    block_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat, c, y, err,
-                      dy, w);
+    block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat, c, y,
+                              err, dy, w);
     swap_vectors(&y, &gathered_w);
 
     /* stage 1 to s-2 */
@@ -94,8 +94,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                      MPI_COMM_WORLD);
 
       swap_vectors(&w[i], &gathered_w);
-      block_interm_stage(i, first_elem, num_elems, s, t, h, A, b, b_hat, c, y,
-                         err, dy, w);
+      block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b, b_hat,
+                                 c, y, err, dy, w);
       swap_vectors(&w[i], &gathered_w);
 
     }
@@ -107,8 +107,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                    MPI_COMM_WORLD);
 
     swap_vectors(&w[s - 1], &gathered_w);
-    block_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c, y, err, dy, w,
-                     &my_err_max);
+    block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c, y,
+                             err, dy, w, &my_err_max);
     swap_vectors(&w[s - 1], &gathered_w);
 
     /* step control */

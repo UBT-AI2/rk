@@ -24,7 +24,7 @@
 void solver(double t0, double te, double *y0, double *y, double tol)
 {
   int i;
-  double **w, *y_old, *err, *dy;
+  double **w, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
   double err_max;
   int s, ord;
@@ -33,7 +33,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int steps_acc = 0, steps_rej = 0;
 
   printf("Solver type: sequential embedded Runge-Kutta method\n");
-  printf("Implementation variant: D (temporal locality of reads)\n");
+  printf
+    ("Implementation variant: Dblock (temporal and spatial locality of reads)\n");
 
   METHOD(&A, &b, &b_hat, &c, &s, &ord);
 
@@ -41,6 +42,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     b_hat[i] = b[i] - b_hat[i];
 
   ALLOC2D(w, s, ode_size, double);
+
+  v = MALLOC(BLOCKSIZE, double);
 
   err = MALLOC(ode_size, double);
   dy = MALLOC(ode_size, double);
@@ -57,15 +60,15 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   {
     err_max = 0.0;
 
-    block_scatter_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy,
-                              w);
+    tiled_block_scatter_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y,
+                                    err, dy, w, v);
 
     for (i = 1; i < s - 1; i++)
-      block_scatter_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c, y,
-                                 err, dy, w);
+      tiled_block_scatter_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c,
+                                       y, err, dy, w, v);
 
-    block_scatter_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err, dy, w,
-                             &err_max);
+    tiled_block_scatter_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err,
+                                   dy, w, v, &err_max);
 
     /* step control */
 
@@ -80,6 +83,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE2D(w);
   FREE(err);
   FREE(dy);
+
+  FREE(v);
 
   print_statistics(timer, steps_acc, steps_rej);
 }

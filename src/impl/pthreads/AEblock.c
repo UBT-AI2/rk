@@ -103,13 +103,13 @@ void *solver_thread(void *argument)
 
     for (l = 1; l < s; l++)
     {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
+      tiled_block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
       barrier_wait(bar);
       block_rhs(l, first_elem, num_elems, t, h, c, w, v);
       barrier_wait(bar);
     }
 
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    tiled_block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)
@@ -150,7 +150,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: A (spatial locality)\n");
+  printf
+    ("Implementation variant: AEblock (temporal and spatial locality of writes)\n");
   printf("Number of threads: %d\n", threads);
 
   arg = MALLOC(threads, arg_t);
