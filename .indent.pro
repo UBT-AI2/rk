@@ -1,0 +1,10 @@
+--braces-after-if-line
+--brace-indent0
+--braces-after-struct-decl-line
+--dont-break-procedure-type
+--no-space-after-function-call-names
+--blank-lines-after-procedures
+--no-tabs
+--cuddle-do-while
+-l80
+-lc80

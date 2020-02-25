@@ -102,7 +102,7 @@ static inline void swap_vectors(double **a, double **b)
 #define PAD_SIZE2            ((PAD_SIZE) + (PAD_SIZE))
 
 #if PAD_SIZE > 0
-#define PADDING_FIELD(id)    char id[PAD_SIZE];
+#define PADDING_FIELD(id)    char id[PAD_SIZE]
 #else
 #define PADDING_FIELD(id)
 #endif

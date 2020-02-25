@@ -38,9 +38,9 @@
 
 typedef struct
 {
-  PADDING_FIELD(pad1)
+  PADDING_FIELD(pad1);
   pthread_spinlock_t lock;
-  PADDING_FIELD(pad2)
+    PADDING_FIELD(pad2);
 } mutex_lock_t;
 
 #if PAD_SIZE > 0
@@ -61,9 +61,9 @@ typedef struct
 
 typedef struct
 {
-  PADDING_FIELD(pad1)
+  PADDING_FIELD(pad1);
   pthread_mutex_t lock;
-  PADDING_FIELD(pad2)
+    PADDING_FIELD(pad2);
 } mutex_lock_t;
 
 #if PAD_SIZE > 0
@@ -100,7 +100,7 @@ void run_threads(int threads, thread_function_t * func, void **arglist);
 
 typedef struct
 {
-  PADDING_FIELD(pad1)
+  PADDING_FIELD(pad1);
   int threads;
   int thread_count;
   int in_use;
@@ -108,7 +108,7 @@ typedef struct
   pthread_mutex_t lock;
   pthread_cond_t not_all;
   pthread_cond_t used;
-  PADDING_FIELD(pad2)
+    PADDING_FIELD(pad2);
 } reduction_t;
 
 double reduction_max(reduction_t * red, double value);
@@ -124,9 +124,9 @@ void reduction_destroy(reduction_t * red);
 
 typedef struct
 {
-  PADDING_FIELD(pad1)
+  PADDING_FIELD(pad1);
   pthread_barrier_t bar;
-  PADDING_FIELD(pad2)
+    PADDING_FIELD(pad2);
 } barrier_t;
 
 #define barrier_wait(BARRIER)    \
@@ -142,14 +142,14 @@ typedef struct
 
 typedef struct
 {
-  PADDING_FIELD(pad1)
+  PADDING_FIELD(pad1);
   int threads;
   int thread_count;
   int in_use;
   pthread_mutex_t lock;
   pthread_cond_t not_all;
   pthread_cond_t used;
-  PADDING_FIELD(pad2)
+    PADDING_FIELD(pad2);
 } barrier_t;
 
 void barrier_wait(barrier_t * bar);

@@ -36,6 +36,8 @@ MPIDIR  	= $(SRCDIR)/impl/$(PREFIX_MPI)
 
 DEPFILE         = .depend
 
+CORES           = 4
+
 ################################################################################
 
 CFLAGS  = -I$(INCDIR) -D_REENTRANT -Wall -O3 -g -D_GNU_SOURCE
@@ -50,6 +52,7 @@ MAKEDEP = $(CC) $(CFLAGS) -MM -MG
 
 ################################################################################
 
+HEADERS          = $(wildcard $(INCDIR)/*.h)
 PROB_SOURCES     = $(wildcard $(PROBDIR)/*.c)
 IMPL_SOURCES_SEQ = $(wildcard $(SEQDIR)/*.c)
 IMPL_SOURCES_PTH = $(wildcard $(PTHDIR)/*.c)
@@ -141,6 +144,48 @@ done >> $(DEPFILE)
     echo ; \
   done ; \
 done >> $(DEPFILE)
+
+################################################################################
+
+.PHONY:	check
+check:	all
+	for P in $(SEQ_TARGETS); do \
+  printf "%35s\t" ./$$P ; \
+  ./$$P | grep "Result" ; \
+done ; \
+for P in $(PTH_TARGETS); do \
+  printf "%35s\t" ./$$P ; \
+  NUM_THREADS=$(CORES) ./$$P | grep "Result" ; \
+done ; \
+for P in $(MPI_TARGETS); do \
+  printf "%35s\t" ./$$P ; \
+  mpirun -n $(CORES) ./$$P | grep "Result" ; \
+done
+
+################################################################################
+
+.PHONY:	time
+time:	all
+	for P in $(SEQ_TARGETS); do \
+  printf "%35s\t" ./$$P ; \
+  ./$$P | grep "Kernel time" ; \
+done ; \
+echo ; \
+for P in $(PTH_TARGETS); do \
+  printf "%35s\t" ./$$P ; \
+  NUM_THREADS=$(CORES) ./$$P | grep "Kernel time" ; \
+done ; \
+echo ; \
+for P in $(MPI_TARGETS); do \
+  printf "%35s\t" ./$$P ; \
+  mpirun -n $(CORES) ./$$P | grep "Kernel time" ; \
+done
+
+################################################################################
+
+.PHONY:	indent
+indent:
+	indent $(HEADERS) $(ALL_SOURCES)
 
 ################################################################################
 
