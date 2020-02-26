@@ -1,3 +1,51 @@
+2020-02-26  Matthias Korch  <korch@uni-bayreuth.de>
+
+	Release on Github.
+
+	Fixed warnings about unused things.
+
+	* src/impl/mpi/D.c
+	* src/impl/mpi/Dbc.c
+	* src/impl/mpi/PipeD.c
+	* src/impl/mpi/PipeD2.c
+	* src/impl/mpi/PipeD4.c
+	* src/impl/mpi/PipeD4ls.c
+	* src/impl/mpi/PipeD5.c
+	* src/impl/pthreads/D.c
+	* src/impl/pthreads/PipeD2.c
+
+	Added implementation variants A, E, AEblock, Dblock and Dbcblock.
+
+	* include/block-inline.h: Added new block functions, renamed some
+	older ones. All callers changed.
+	* src/impl/seq/A.c
+	* src/impl/seq/E.c
+	* src/impl/seq/AEblock.c
+	* src/impl/seq/Dblock.c
+	* src/impl/mpi/A.c
+	* src/impl/mpi/E.c
+	* src/impl/mpi/AEblock.c
+	* src/impl/mpi/Dblock.c
+	* src/impl/mpi/Dbcblock.c
+	* src/impl/pthreads/A.c
+	* src/impl/pthreads/E.c
+	* src/impl/pthreads/AEblock.c
+	* src/impl/pthreads/Dblock.c
+	* src/impl/pthreads/Dbcblock.c
+
+	Added make targets "check", "time", and "indent".
+
+	* Makefile
+
+	Updated copyright period and changed license to GPLv3.
+
+	* COPYING and all source files.
+
+	Updated documentation.
+
+	* README.md
+
 2010-08-11  Matthias Korch  <korch@uni-bayreuth.de>
 
 	First release.
+
