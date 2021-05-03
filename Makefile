@@ -124,7 +124,7 @@ clean:
 dep:
 		for i in $(ALL_SOURCES); do \
   echo -n "$$(dirname $$i)/" ; \
-  $(MAKEDEP) $$i; \
+  $(MAKEDEP) $$i | grep -v -P '^ /' ; \
   echo ; \
 done > $(DEPFILE)
 		for i in $(IMPL_SEQ); do \
