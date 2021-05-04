@@ -240,30 +240,6 @@ static inline void block_scatter_first_stage(int first, int size, int s,
 
 /******************************************************************************/
 
-static inline void block_scatter_first_stage_reverse(int first, int size, int s,
-                                                     double t, double h,
-                                                     double **A, double *b,
-                                                     double *b_hat, double *c,
-                                                     double *y, double *err,
-                                                     double *dy, double **w)
-{
-  int j, l;
-
-  for (j = first + size - 1; j >= first; j--)
-  {
-    double hF = h * ode_eval_comp(j, t + c[0] * h, y);
-    double Y = y[j];
-
-    for (l = 1; l < s; l++)
-      w[l][j] = Y + A[l][0] * hF;
-
-    dy[j] = b[0] * hF;
-    err[j] = b_hat[0] * hF;
-  }
-}
-
-/******************************************************************************/
-
 static inline void block_scatter_interm_stage(int i, int first, int size, int s,
                                               double t, double h, double **A,
                                               double *b, double *b_hat,
@@ -286,30 +262,6 @@ static inline void block_scatter_interm_stage(int i, int first, int size, int s,
 
 /******************************************************************************/
 
-static inline void block_scatter_interm_stage_reverse(int i, int first,
-                                                      int size, int s, double t,
-                                                      double h, double **A,
-                                                      double *b, double *b_hat,
-                                                      double *c, double *y,
-                                                      double *err, double *dy,
-                                                      double **w)
-{
-  int j, l;
-
-  for (j = first + size - 1; j >= first; j--)
-  {
-    double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
-
-    for (l = i + 1; l < s; l++)
-      w[l][j] += A[l][i] * hF;
-
-    dy[j] += b[i] * hF;
-    err[j] += b_hat[i] * hF;
-  }
-}
-
-/******************************************************************************/
-
 static inline void block_scatter_last_stage(int first, int size, int s,
                                             double t, double h, double *b,
                                             double *b_hat, double *c, double *y,
@@ -319,33 +271,6 @@ static inline void block_scatter_last_stage(int first, int size, int s,
   int j, i = s - 1;
 
   for (j = first; j < first + size; j++)
-  {
-    double yj_old;
-    double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);
-
-    dy[j] += b[i] * hF;
-    err[j] += b_hat[i] * hF;
-
-    yj_old = y[j];
-    y[j] += dy[j];
-    dy[j] = yj_old;             /* y_old and dy occupy the same space */
-
-    update_error_max(err_max, err[j], y[j], yj_old);
-  }
-}
-
-/******************************************************************************/
-
-static inline void block_scatter_last_stage_reverse(int first, int size, int s,
-                                                    double t, double h,
-                                                    double *b, double *b_hat,
-                                                    double *c, double *y,
-                                                    double *err, double *dy,
-                                                    double **w, double *err_max)
-{
-  int j, i = s - 1;
-
-  for (j = first + size - 1; j >= first; j--)
   {
     double yj_old;
     double hF = h * ode_eval_comp(j, t + c[i] * h, w[i]);

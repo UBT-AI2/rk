@@ -23,7 +23,7 @@
 void solver(double t0, double te, double *y0, double *y, double tol)
 {
   int i, j, k;
-  double **w, *y_old, *err, *dy;
+  double **w, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
   double err_max, my_err_max;
   int s, ord;
@@ -56,6 +56,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   err = MALLOC(ode_size, double);
   dy = MALLOC(ode_size, double);
+
+  v = MALLOC(BLOCKSIZE, double);
 
   bufsize = (s * (s + 7) / 2 - 3) * BLOCKSIZE;
   sbuf = MALLOC(bufsize, double);
@@ -104,19 +106,24 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (j = 1; j < s; j++)
     {
-      block_scatter_first_stage(first_elem + (2 * j - 1) * BLOCKSIZE, BLOCKSIZE,
-                                s, t, h, A, b, b_hat, c, y, err, dy, w);
+      tiled_block_scatter_first_stage(first_elem + (2 * j - 1) * BLOCKSIZE,
+                                      BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                      err, dy, w, v);
       for (i = 1; i < j; i++)
-        block_scatter_interm_stage(i, first_elem + (2 * j - 1 - i) * BLOCKSIZE,
-                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                   dy, w);
+        tiled_block_scatter_interm_stage(i,
+                                         first_elem + (2 * j - 1 -
+                                                       i) * BLOCKSIZE,
+                                         BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                         err, dy, w, v);
 
-      block_scatter_first_stage(first_elem + 2 * j * BLOCKSIZE, BLOCKSIZE, s, t,
-                                h, A, b, b_hat, c, y, err, dy, w);
+      tiled_block_scatter_first_stage(first_elem + 2 * j * BLOCKSIZE, BLOCKSIZE,
+                                      s, t, h, A, b, b_hat, c, y, err, dy, w,
+                                      v);
       for (i = 1; i < j; i++)
-        block_scatter_interm_stage(i, first_elem + (2 * j - i) * BLOCKSIZE,
-                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                   dy, w);
+        tiled_block_scatter_interm_stage(i,
+                                         first_elem + (2 * j - i) * BLOCKSIZE,
+                                         BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                         err, dy, w, v);
     }
 
     /* send data */
@@ -139,13 +146,14 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     for (j = first_elem + (2 * s - 1) * BLOCKSIZE;
          j < last_elem - BLOCKSIZE + 1; j += BLOCKSIZE)
     {
-      block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                dy, w);
+      tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                      err, dy, w, v);
       for (i = 1; i < s - 1; i++)
-        block_scatter_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
-                                   b, b_hat, c, y, err, dy, w);
-      block_scatter_last_stage(j - ((s - 1) * BLOCKSIZE), BLOCKSIZE, s, t, h, b,
-                               b_hat, c, y, err, dy, w, &my_err_max);
+        tiled_block_scatter_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s, t,
+                                         h, A, b, b_hat, c, y, err, dy, w, v);
+      tiled_block_scatter_last_stage(j - ((s - 1) * BLOCKSIZE), BLOCKSIZE, s, t,
+                                     h, b, b_hat, c, y, err, dy, w, v,
+                                     &my_err_max);
     }
 
     /* receive data */
@@ -167,54 +175,57 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     /* finalization */
 
-    block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A,
-                              b, b_hat, c, y, err, dy, w);
+    tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
+                                    h, A, b, b_hat, c, y, err, dy, w, v);
 
     for (i = 1; i < s - 1; i++)
-      block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1 - i * BLOCKSIZE,
-                                 BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err, dy,
-                                 w);
+      tiled_block_scatter_interm_stage(i,
+                                       last_elem - BLOCKSIZE + 1 -
+                                       i * BLOCKSIZE, BLOCKSIZE, s, t, h, A, b,
+                                       b_hat, c, y, err, dy, w, v);
 
-    block_scatter_last_stage(last_elem - BLOCKSIZE + 1 - (s - 1) * BLOCKSIZE,
-                             BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                             &my_err_max);
+    tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1 -
+                                   (s - 1) * BLOCKSIZE, BLOCKSIZE, s, t, h, b,
+                                   b_hat, c, y, err, dy, w, v, &my_err_max);
 
 
-    block_scatter_first_stage((last_elem + 1) % ode_size, BLOCKSIZE, s, t, h, A,
-                              b, b_hat, c, y, err, dy, w);
+    tiled_block_scatter_first_stage((last_elem + 1) % ode_size, BLOCKSIZE, s, t,
+                                    h, A, b, b_hat, c, y, err, dy, w, v);
 
     for (i = 1; i < s - 1; i++)
-      block_scatter_interm_stage(i, last_elem + 1 - i * BLOCKSIZE, BLOCKSIZE, s,
-                                 t, h, A, b, b_hat, c, y, err, dy, w);
+      tiled_block_scatter_interm_stage(i, last_elem + 1 - i * BLOCKSIZE,
+                                       BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                       err, dy, w, v);
 
-    block_scatter_last_stage(last_elem + 1 - (s - 1) * BLOCKSIZE, BLOCKSIZE, s,
-                             t, h, b, b_hat, c, y, err, dy, w, &my_err_max);
+    tiled_block_scatter_last_stage(last_elem + 1 - (s - 1) * BLOCKSIZE,
+                                   BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy,
+                                   w, v, &my_err_max);
 
     for (i = 1; i < s; i++)
     {
       for (j = i; j < s - 1; j++)
-        block_scatter_interm_stage(j,
-                                   (last_elem - BLOCKSIZE + 1 +
-                                    (2 * i - j) * BLOCKSIZE) % ode_size,
-                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                   dy, w);
+        tiled_block_scatter_interm_stage(j,
+                                         (last_elem - BLOCKSIZE + 1 +
+                                          (2 * i - j) * BLOCKSIZE) % ode_size,
+                                         BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                         err, dy, w, v);
 
-      block_scatter_last_stage((last_elem - BLOCKSIZE + 1 +
-                                (2 * i - s + 1) * BLOCKSIZE) % ode_size,
-                               BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                               &my_err_max);
+      tiled_block_scatter_last_stage((last_elem - BLOCKSIZE + 1 +
+                                      (2 * i - s + 1) * BLOCKSIZE) % ode_size,
+                                     BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
+                                     dy, w, v, &my_err_max);
 
       for (j = i; j < s - 1; j++)
-        block_scatter_interm_stage(j,
-                                   (last_elem + 1 +
-                                    (2 * i - j) * BLOCKSIZE) % ode_size,
-                                   BLOCKSIZE, s, t, h, A, b, b_hat, c, y, err,
-                                   dy, w);
+        tiled_block_scatter_interm_stage(j,
+                                         (last_elem + 1 +
+                                          (2 * i - j) * BLOCKSIZE) % ode_size,
+                                         BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
+                                         err, dy, w, v);
 
-      block_scatter_last_stage((last_elem + 1 +
-                                (2 * i - s + 1) * BLOCKSIZE) % ode_size,
-                               BLOCKSIZE, s, t, h, b, b_hat, c, y, err, dy, w,
-                               &my_err_max);
+      tiled_block_scatter_last_stage((last_elem + 1 +
+                                      (2 * i - s + 1) * BLOCKSIZE) % ode_size,
+                                     BLOCKSIZE, s, t, h, b, b_hat, c, y, err,
+                                     dy, w, v, &my_err_max);
     }
 
     /* step control */
@@ -274,6 +285,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   FREE2D(w);
   FREE(err);
   FREE(dy);
+  FREE(v);
 
   FREE(elem_offset);
   FREE(elem_length);
