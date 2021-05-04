@@ -1,4 +1,5 @@
 *~
 *.o
 *.flc
-bin/*
+/bin/*
+!/bin/.force_tracking
