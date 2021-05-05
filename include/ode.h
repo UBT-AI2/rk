@@ -32,6 +32,7 @@ extern int ode_size;
 
 extern void ode_start(double t, double *y0);
 extern double ode_eval_comp(int i, double t, const double *y);
+extern void ode_eval_rng(int i, int j, double t, const double *y, double *f);
 extern int ode_acc_dist(void);
 
 /******************************************************************************/

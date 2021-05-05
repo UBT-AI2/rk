@@ -32,8 +32,10 @@ static inline void block_rhs(int l, int first, int size, double t, double h,
 {
   int j;
 
+  ode_eval_rng(first, first + size - 1, t + c[l] * h, w, v[l]);
+
   for (j = first; j < first + size; j++)
-    v[l][j] = h * ode_eval_comp(j, t + c[l] * h, w);
+    v[l][j] *= h;
 }
 
 /******************************************************************************/
@@ -173,8 +175,9 @@ static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
+    ode_eval_rng(j, j + count - 1, t + c[l] * h, w_l, v[l]);
     for (jj = 0; jj < count; jj++)
-      v[l][j + jj] = h * ode_eval_comp(j + jj, t + c[l] * h, w_l);
+      v[l][j + jj] *= h;
 
     for (jj = 0; jj < count; jj++)
       w_lp1[j + jj] = y[j + jj] + A[l + 1][0] * v[0][j + jj];
@@ -302,8 +305,9 @@ static inline void tiled_block_scatter_first_stage(int first, int size, int s,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
+    ode_eval_rng(j, j + count - 1, t + c[0] * h, y, v - j);
     for (jj = 0; jj < count; jj++)
-      v[jj] = h * ode_eval_comp(j + jj, t + c[0] * h, y);
+      v[jj] *= h;
 
     for (l = 1; l < s; l++)
       for (jj = 0; jj < count; jj++)
@@ -333,8 +337,9 @@ static inline void tiled_block_scatter_interm_stage(int i, int first, int size,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
+    ode_eval_rng(j, j + count - 1, t + c[i] * h, w[i], v - j);
     for (jj = 0; jj < count; jj++)
-      v[jj] = h * ode_eval_comp(j + jj, t + c[i] * h, w[i]);
+      v[jj] *= h;
 
     for (l = i + 1; l < s; l++)
       for (jj = 0; jj < count; jj++)
@@ -363,8 +368,9 @@ static inline void tiled_block_scatter_last_stage(int first, int size, int s,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
+    ode_eval_rng(j, j + count - 1, t + c[i] * h, w[i], v - j);
     for (jj = 0; jj < count; jj++)
-      v[jj] = h * ode_eval_comp(j + jj, t + c[i] * h, w[i]);
+      v[jj] *= h;
 
     for (jj = 0; jj < count; jj++)
       dy[j + jj] += b[i] * v[jj];
