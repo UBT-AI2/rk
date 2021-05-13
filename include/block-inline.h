@@ -84,12 +84,17 @@ static inline void block_gather_vec_interm_stage(int l, int first, int size,
 {
   int i, j;
 
-  for (j = first; j < first + size; j++)
-    w[j] = y[j] + A[l][0] * v[0][j];
+  if (A[l][0] != 0.0)
+    for (j = first; j < first + size; j++)
+      w[j] = y[j] + A[l][0] * v[0][j];
+  else
+    for (j = first; j < first + size; j++)
+      w[j] = y[j];
 
   for (i = 1; i < l; i++)
-    for (j = first; j < first + size; j++)
-      w[j] += A[l][i] * v[i][j];
+    if (A[l][i] != 0.0)
+      for (j = first; j < first + size; j++)
+        w[j] += A[l][i] * v[i][j];
 }
 
 /******************************************************************************/
@@ -107,10 +112,27 @@ static inline void block_gather_vec_output(int first, int size, int s,
   }
 
   for (i = 1; i < s; i++)
-    for (j = first; j < first + size; j++)
+    if (b_hat[i] != 0.0)
     {
-      err[j] += b_hat[i] * v[i][j];
-      dy[j] += b[i] * v[i][j];
+      if (b[i] != 0.0)
+      {
+        for (j = first; j < first + size; j++)
+        {
+          err[j] += b_hat[i] * v[i][j];
+          dy[j] += b[i] * v[i][j];
+        }
+      }
+      else
+      {
+        for (j = first; j < first + size; j++)
+          err[j] += b_hat[i] * v[i][j];
+      }
+    }
+    else
+    {
+      if (b[i] != 0.0)
+        for (j = first; j < first + size; j++)
+          dy[j] += b[i] * v[i][j];
     }
 }
 
@@ -126,14 +148,18 @@ static inline void tiled_block_gather_interm_stage(int l, int first, int size,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
-    for (jj = 0; jj < count; jj++)
-      w[j + jj] = y[j + jj] + A[l][0] * v[0][j + jj];
+    if (A[l][0] != 0.0)
+      for (jj = 0; jj < count; jj++)
+        w[j + jj] = y[j + jj] + A[l][0] * v[0][j + jj];
+    else
+      for (jj = 0; jj < count; jj++)
+        w[j + jj] = y[j + jj];
 
     for (i = 1; i < l; i++)
-      for (jj = 0; jj < count; jj++)
-        w[j + jj] += A[l][i] * v[i][j + jj];
+      if (A[l][i] != 0.0)
+        for (jj = 0; jj < count; jj++)
+          w[j + jj] += A[l][i] * v[i][j + jj];
   }
-
 }
 
 /******************************************************************************/
@@ -209,11 +235,13 @@ static inline void tiled_block_gather_output(int first, int size, int s,
 
     for (i = 1; i < s; i++)
     {
-      for (jj = 0; jj < count; jj++)
-        err[j + jj] += b_hat[i] * v[i][j + jj];
+      if (b_hat[i] != 0.0)
+        for (jj = 0; jj < count; jj++)
+          err[j + jj] += b_hat[i] * v[i][j + jj];
 
-      for (jj = 0; jj < count; jj++)
-        dy[j + jj] += b[i] * v[i][j + jj];
+      if (b[i] != 0.0)
+        for (jj = 0; jj < count; jj++)
+          dy[j + jj] += b[i] * v[i][j + jj];
     }
   }
 }
@@ -310,8 +338,14 @@ static inline void tiled_block_scatter_first_stage(int first, int size, int s,
       v[jj] *= h;
 
     for (l = 1; l < s; l++)
-      for (jj = 0; jj < count; jj++)
-        w[l][j + jj] = y[j + jj] + A[l][0] * v[jj];
+    {
+      if (A[l][0] != 0.0)
+        for (jj = 0; jj < count; jj++)
+          w[l][j + jj] = y[j + jj] + A[l][0] * v[jj];
+      else
+        for (jj = 0; jj < count; jj++)
+          w[l][j + jj] = y[j + jj];
+    }
 
     for (jj = 0; jj < count; jj++)
       dy[j + jj] = b[0] * v[jj];
@@ -342,14 +376,17 @@ static inline void tiled_block_scatter_interm_stage(int i, int first, int size,
       v[jj] *= h;
 
     for (l = i + 1; l < s; l++)
+      if (A[l][i] != 0.0)
+        for (jj = 0; jj < count; jj++)
+          w[l][j + jj] += A[l][i] * v[jj];
+
+    if (b[i] != 0.0)
       for (jj = 0; jj < count; jj++)
-        w[l][j + jj] += A[l][i] * v[jj];
+        dy[j + jj] += b[i] * v[jj];
 
-    for (jj = 0; jj < count; jj++)
-      dy[j + jj] += b[i] * v[jj];
-
-    for (jj = 0; jj < count; jj++)
-      err[j + jj] += b_hat[i] * v[jj];
+    if (b_hat[i] != 0.0)
+      for (jj = 0; jj < count; jj++)
+        err[j + jj] += b_hat[i] * v[jj];
   }
 }
 
@@ -372,11 +409,13 @@ static inline void tiled_block_scatter_last_stage(int first, int size, int s,
     for (jj = 0; jj < count; jj++)
       v[jj] *= h;
 
-    for (jj = 0; jj < count; jj++)
-      dy[j + jj] += b[i] * v[jj];
+    if (b[i] != 0.0)
+      for (jj = 0; jj < count; jj++)
+        dy[j + jj] += b[i] * v[jj];
 
-    for (jj = 0; jj < count; jj++)
-      err[j + jj] += b_hat[i] * v[jj];
+    if (b_hat[i] != 0.0)
+      for (jj = 0; jj < count; jj++)
+        err[j + jj] += b_hat[i] * v[jj];
 
     for (jj = 0; jj < count; jj++)
     {
