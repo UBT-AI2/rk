@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
       else if (y[i] > max)
         max = y[i];
 
-    printf("Result: y[0] = %e, ..., y[%d] = %e; min = %e, max = %e\n",
+    printf("Result: y[0] = %.20e, ..., y[%d] = %.20e; min = %.20e, max = %.20e\n",
            y[0], ode_size - 1, y[ode_size - 1], min, max);
 #ifdef HAVE_MPI
   }
