@@ -228,7 +228,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: Dbc (D with block-based communication)\n");
+  printf("Implementation variant: Dbcblock ");
+  printf("(Dblock with block-based communication)\n");
   printf("communication)\n");
   printf("Number of threads: %d\n", threads);
 

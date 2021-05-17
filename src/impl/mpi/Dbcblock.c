@@ -41,7 +41,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   {
     printf("Solver type: parallel embedded Runge-Kutta method");
     printf(" for distributed address space\n");
-    printf("Implementation variant: Dbc (D with block-based communication)\n");
+    printf
+      ("Implementation variant: Dbcblock (Dblock with block-based communication)\n");
     printf("Number of MPI processes: %d\n", processes);
   }
 

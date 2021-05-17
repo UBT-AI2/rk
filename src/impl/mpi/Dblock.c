@@ -38,7 +38,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   {
     printf("Solver type: parallel embedded Runge-Kutta method");
     printf(" for distributed address space\n");
-    printf("Implementation variant: D (temporal locality of reads)\n");
+    printf("Implementation variant: Dblock ");
+    printf("(temporal and spatial locality of reads)\n");
     printf("Number of MPI processes: %d\n", processes);
   }
 

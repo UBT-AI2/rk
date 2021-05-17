@@ -161,7 +161,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   printf("Solver type: ");
   printf("parallel embedded Runge-Kutta method for shared address space\n");
-  printf("Implementation variant: D (temporal locality of reads)\n");
+  printf("Implementation variant: Dblock ");
+  printf("(temporal and spatial locality of reads)\n");
   printf("Number of threads: %d\n", threads);
 
   arg = MALLOC(threads, arg_t);
