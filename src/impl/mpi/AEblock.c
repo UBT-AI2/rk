@@ -26,6 +26,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   double **v, *w, *y_old, *err, *dy, *gathered_w;
   double **A, *b, *b_hat, *c;
   int **iz_A, *iz_b, *iz_b_hat, *iz_c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
@@ -49,6 +50,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
   zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   ALLOC2D(v, s, ode_size, double);
 
@@ -75,29 +77,31 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     /* stages */
 
     MPI_Allgatherv(y + first_elem, num_elems, MPI_DOUBLE,
                    gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                    MPI_COMM_WORLD);
 
-    block_rhs(0, first_elem, num_elems, t, h, c, gathered_w, v);
+    block_rhs(0, first_elem, num_elems, t, h, hc, gathered_w, v);
 
     for (l = 1; l < s; l++)
     {
-      tiled_block_gather_interm_stage(l, first_elem, num_elems, A, iz_A, y, w,
+      tiled_block_gather_interm_stage(l, first_elem, num_elems, hA, iz_A, y, w,
                                       v);
 
       MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE,
                      gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                      MPI_COMM_WORLD);
 
-      block_rhs(l, first_elem, num_elems, t, h, c, gathered_w, v);
+      block_rhs(l, first_elem, num_elems, t, h, hc, gathered_w, v);
     }
 
     /* output approximation */
 
-    tiled_block_gather_output(first_elem, num_elems, s, b, b_hat, iz_b,
+    tiled_block_gather_output(first_elem, num_elems, s, hb, hb_hat, iz_b,
                               iz_b_hat, err, dy, v);
 
     my_err_max = 0.0;
@@ -126,6 +130,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
               y, elem_length, elem_offset, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
   free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE2D(v);

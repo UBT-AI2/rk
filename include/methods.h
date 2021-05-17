@@ -79,6 +79,13 @@ void zero_pattern(double **A, double *b, double *b_hat, double *c,
                   int *is_zero_c, int s);
 
 /******************************************************************************/
+/* Premultiplication with h                                                   */
+/******************************************************************************/
+
+void premult(double h, double **A, double *b, double *b_hat, double *c,
+             double **hA, double *hb, double *hb_hat, double *hc, int s);
+
+/******************************************************************************/
 /* Embedded RK methods                                                        */
 /******************************************************************************/
 

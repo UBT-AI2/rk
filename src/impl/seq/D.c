@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i;
   double **w, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max;
   int s, ord;
   double h, t;
@@ -38,6 +39,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   ALLOC2D(w, s, ode_size, double);
 
@@ -54,17 +57,19 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     err_max = 0.0;
 
-    block_scatter_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y, err, dy,
-                              w);
+    block_scatter_first_stage(0, ode_size, s, t, h, hA, hb, hb_hat, hc, y, err,
+                              dy, w);
 
     for (i = 1; i < s - 1; i++)
-      block_scatter_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c, y,
+      block_scatter_interm_stage(i, 0, ode_size, s, t, h, hA, hb, hb_hat, hc, y,
                                  err, dy, w);
 
-    block_scatter_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err, dy, w,
-                             &err_max);
+    block_scatter_last_stage(0, ode_size, s, t, h, hb, hb_hat, hc, y, err, dy,
+                             w, &err_max);
 
     /* step control */
 
@@ -75,6 +80,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   timer_stop(&timer);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   FREE2D(w);
   FREE(err);

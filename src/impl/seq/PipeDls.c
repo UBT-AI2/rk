@@ -26,6 +26,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   double *buf, **w, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
   int **iz_A, *iz_b, *iz_b_hat, *iz_c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max;
   int s, ord;
   double h, t;
@@ -43,6 +44,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
   zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   buf = MALLOC(ode_size + (s * s + 5 * s - 4) * BLOCKSIZE / 2, double);
   w = MALLOC(s, double *);
@@ -70,22 +72,24 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     /* initialization */
 
     err_max = 0.0;
 
     for (j = 0; j < k1; j += BLOCKSIZE)
     {
-      tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, iz_A, b, b_hat,
-                                      c, y, err, dy, w, v);
+      tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                      hb_hat, hc, y, err, dy, w, v);
 
       l = j, i = 1;
       while (l > 0)
       {
         l -= BLOCKSIZE;
-        tiled_block_scatter_interm_stage(i, l, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                         c, iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                         v);
+        tiled_block_scatter_interm_stage(i, l, BLOCKSIZE, s, t, h, hA, hb,
+                                         hb_hat, hc, iz_A, iz_b, iz_b_hat, y,
+                                         err, dy, w, v);
         i++;
       }
     }
@@ -94,20 +98,21 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (i = k1; i < ode_size; i += k4)
     {
-      tiled_block_scatter_first_stage(i, BLOCKSIZE, s, t, h, A, iz_A, b, b_hat,
-                                      c, y, err, dy, w, v);
+      tiled_block_scatter_first_stage(i, BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                      hb_hat, hc, y, err, dy, w, v);
       i -= BLOCKSIZE;
 
       for (j = 1; j < s - 1; j++)
       {
-        tiled_block_scatter_interm_stage(j, i, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                         c, iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                         v);
+        tiled_block_scatter_interm_stage(j, i, BLOCKSIZE, s, t, h, hA, hb,
+                                         hb_hat, hc, iz_A, iz_b, iz_b_hat, y,
+                                         err, dy, w, v);
         i -= BLOCKSIZE;
       }
 
-      tiled_block_scatter_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c, iz_b,
-                                     iz_b_hat, y, err, dy, w, v, &err_max);
+      tiled_block_scatter_last_stage(i, BLOCKSIZE, s, t, h, hb, hb_hat, hc,
+                                     iz_b, iz_b_hat, y, err, dy, w, v,
+                                     &err_max);
     }
 
     /* finalization */
@@ -115,11 +120,12 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     for (i = 1; i < s; i++)
     {
       for (j = i, l = k2; j < s - 1; j++, l -= BLOCKSIZE)
-        tiled_block_scatter_interm_stage(j, l, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                         c, iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                         v);
-      tiled_block_scatter_last_stage(l, BLOCKSIZE, s, t, h, b, b_hat, c, iz_b,
-                                     iz_b_hat, y, err, dy, w, v, &err_max);
+        tiled_block_scatter_interm_stage(j, l, BLOCKSIZE, s, t, h, hA, hb,
+                                         hb_hat, hc, iz_A, iz_b, iz_b_hat, y,
+                                         err, dy, w, v);
+      tiled_block_scatter_last_stage(l, BLOCKSIZE, s, t, h, hb, hb_hat, hc,
+                                     iz_b, iz_b_hat, y, err, dy, w, v,
+                                     &err_max);
     }
 
     /* step control */
@@ -131,6 +137,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   timer_stop(&timer);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
   free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE(w);

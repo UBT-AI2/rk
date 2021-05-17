@@ -56,6 +56,7 @@ void *solver_thread(void *argument)
   double *buf;
   double **A, *b, *b_hat, *c;
   int **iz_A, *iz_b, *iz_b_hat, *iz_c;
+  double **hA, *hb, *hb_hat, *hc;
   double timer, err_max, h, t, tol, t0, te;
   int s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
@@ -134,6 +135,8 @@ void *solver_thread(void *argument)
 
   v = MALLOC(BLOCKSIZE, double);
 
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
+
   y_old = dy;
 
   alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
@@ -149,6 +152,8 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     err_max = 0.0;
 
     init_mutexes(me, s, mutex_first, mutex_last);
@@ -164,25 +169,25 @@ void *solver_thread(void *argument)
 
         /* triangle (0, 0) -- (num_blocks-2, 0) -- (0, num_blocks-2) */
 
-        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, iz_A,
-                                        b, b_hat, c, y, err, dy, w, v);
+        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, hA,
+                                        iz_A, hb, hb_hat, hc, y, err, dy, w, v);
         first_block_complete(me, 1, mutex_first);
 
         for (j = first_elem + BLOCKSIZE; j < last_elem - BLOCKSIZE + 1;
              j += BLOCKSIZE)
         {
-          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, iz_A, b,
-                                          b_hat, c, y, err, dy, w, v);
+          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                          hb_hat, hc, y, err, dy, w, v);
 
           for (i = j - BLOCKSIZE, k = 1; i > first_elem; i -= BLOCKSIZE)
-            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                             b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                             err, dy, w, v);
+            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                             hb_hat, hc, iz_A, iz_b, iz_b_hat,
+                                             y, err, dy, w, v);
 
           get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          tiled_block_scatter_interm_stage(k, first_elem, BLOCKSIZE, s, t, h, A,
-                                           b, b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                           err, dy, w, v);
+          tiled_block_scatter_interm_stage(k, first_elem, BLOCKSIZE, s, t, h,
+                                           hA, hb, hb_hat, hc, iz_A, iz_b,
+                                           iz_b_hat, y, err, dy, w, v);
           first_block_complete(me, ++k, mutex_first);
         }
 
@@ -190,14 +195,14 @@ void *solver_thread(void *argument)
            (0, s-1) -- (num_blocks-1, s-num_blocks) */
 
         tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                        t, h, A, iz_A, b, b_hat, c, y, err, dy,
-                                        w, v);
+                                        t, h, hA, iz_A, hb, hb_hat, hc, y, err,
+                                        dy, w, v);
         last_block_complete(me, 1, mutex_last);
 
         for (i = last_elem - 2 * BLOCKSIZE + 1, k = 1; i > first_elem;
              i -= BLOCKSIZE)
-          tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                           b_hat, c, iz_A, iz_b, iz_b_hat, y,
+          tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                           hb_hat, hc, iz_A, iz_b, iz_b_hat, y,
                                            err, dy, w, v);
 
         if (num_blocks < s)
@@ -205,9 +210,9 @@ void *solver_thread(void *argument)
           get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
 
           tiled_block_scatter_interm_stage(num_blocks - 1, first_elem,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           first_block_complete(me, num_blocks, mutex_first);
 
           for (j = 1; j < s - num_blocks; j++)
@@ -216,20 +221,20 @@ void *solver_thread(void *argument)
 
             get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
             tiled_block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1,
-                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                             iz_A, iz_b, iz_b_hat, y, err, dy,
-                                             w, v);
+                                             BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                             hc, iz_A, iz_b, iz_b_hat, y, err,
+                                             dy, w, v);
             last_block_complete(me, k, mutex_last);
 
             for (i = last_elem - 2 * BLOCKSIZE + 1; i > first_elem;
                  i -= BLOCKSIZE)
-              tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                               b_hat, c, iz_A, iz_b, iz_b_hat,
-                                               y, err, dy, w, v);
+              tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA,
+                                               hb, hb_hat, hc, iz_A, iz_b,
+                                               iz_b_hat, y, err, dy, w, v);
 
             get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
             tiled_block_scatter_interm_stage(k, first_elem, BLOCKSIZE, s, t, h,
-                                             A, b, b_hat, c, iz_A, iz_b,
+                                             hA, hb, hb_hat, hc, iz_A, iz_b,
                                              iz_b_hat, y, err, dy, w, v);
             first_block_complete(me, ++k, mutex_first);
           }
@@ -238,23 +243,23 @@ void *solver_thread(void *argument)
 
           get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
           tiled_block_scatter_interm_stage(k, last_elem - BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           last_block_complete(me, ++k, mutex_last);
 
           for (i = last_elem - 2 * BLOCKSIZE + 1; i > first_elem;
                i -= BLOCKSIZE)
-            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                             b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                             err, dy, w, v);
+            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                             hb_hat, hc, iz_A, iz_b, iz_b_hat,
+                                             y, err, dy, w, v);
         }
 
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
         unlock_init_phase(me, mutex_first);
-        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat,
-                                       c, iz_b, iz_b_hat, y, err, dy, w, v,
-                                       &err_max);
+        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, hb,
+                                       b_hat, hc, iz_b, iz_b_hat, y, err, dy, w,
+                                       v, &err_max);
 
         wait_pred_init_complete(me, mutex_last);
 
@@ -266,17 +271,17 @@ void *solver_thread(void *argument)
 
           get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
           tiled_block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           last_block_complete(me, k, mutex_last);
 
           for (i = last_elem - 2 * BLOCKSIZE + 1; k < s - 1; i -= BLOCKSIZE)
-            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                             b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                             err, dy, w, v);
+            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                             hb_hat, hc, iz_A, iz_b, iz_b_hat,
+                                             y, err, dy, w, v);
 
-          tiled_block_scatter_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c,
+          tiled_block_scatter_last_stage(i, BLOCKSIZE, s, t, h, hb, hb_hat, hc,
                                          iz_b, iz_b_hat, y, err, dy, w, v,
                                          &err_max);
         }
@@ -284,7 +289,7 @@ void *solver_thread(void *argument)
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
         tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                       t, h, b, b_hat, c, iz_b, iz_b_hat, y,
+                                       t, h, hb, hb_hat, hc, iz_b, iz_b_hat, y,
                                        err, dy, w, v, &err_max);
       }
       else                      /* !me_is_even */
@@ -295,40 +300,40 @@ void *solver_thread(void *argument)
            (num_blocks-1, num_blocks-2) */
 
         tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
-                                        s, t, h, A, iz_A, b, b_hat, c, y, err,
-                                        dy, w, v);
+                                        s, t, h, hA, iz_A, hb, hb_hat, hc, y,
+                                        err, dy, w, v);
         last_block_complete(me, 1, mutex_last);
 
         for (j = last_elem - 2 * BLOCKSIZE + 1; j > first_elem; j -= BLOCKSIZE)
         {
-          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, iz_A, b,
-                                          b_hat, c, y, err, dy, w, v);
+          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                          hb_hat, hc, y, err, dy, w, v);
 
           for (i = j + BLOCKSIZE, k = 1; i < last_elem - BLOCKSIZE + 1;
                i += BLOCKSIZE)
-            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                             b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                             err, dy, w, v);
+            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                             hb_hat, hc, iz_A, iz_b, iz_b_hat,
+                                             y, err, dy, w, v);
 
           get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
           tiled_block_scatter_interm_stage(k, last_elem - BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           last_block_complete(me, ++k, mutex_last);
         }
 
         /* parallelogram (0, 0) -- (num_blocks-1, num_blocks-1) --
            (num_block-1, s-1) -- (0, s-num_blocks) */
 
-        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, iz_A,
-                                        b, b_hat, c, y, err, dy, w, v);
+        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, hA,
+                                        iz_A, hb, hb_hat, hc, y, err, dy, w, v);
         first_block_complete(me, 1, mutex_first);
 
         for (i = first_elem + BLOCKSIZE, k = 1; i < last_elem - BLOCKSIZE + 1;
              i += BLOCKSIZE)
-          tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                           b_hat, c, iz_A, iz_b, iz_b_hat, y,
+          tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                           hb_hat, hc, iz_A, iz_b, iz_b_hat, y,
                                            err, dy, w, v);
 
         if (num_blocks < s)     /* less than s blocks per thread */
@@ -337,9 +342,9 @@ void *solver_thread(void *argument)
 
           tiled_block_scatter_interm_stage(num_blocks - 1,
                                            last_elem - BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           last_block_complete(me, num_blocks, mutex_last);
 
           for (j = 1; j < s - num_blocks; j++)
@@ -348,21 +353,21 @@ void *solver_thread(void *argument)
 
             get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
             tiled_block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t,
-                                             h, A, b, b_hat, c, iz_A, iz_b,
+                                             h, hA, hb, hb_hat, hc, iz_A, iz_b,
                                              iz_b_hat, y, err, dy, w, v);
             first_block_complete(me, k, mutex_first);
 
             for (i = first_elem + BLOCKSIZE; i < last_elem - BLOCKSIZE + 1;
                  i += BLOCKSIZE)
-              tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A,
-                                               b, b_hat, c, iz_A, iz_b,
+              tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA,
+                                               hb, hb_hat, hc, iz_A, iz_b,
                                                iz_b_hat, y, err, dy, w, v);
 
             get_from_succ(me, k, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
             tiled_block_scatter_interm_stage(k, last_elem - BLOCKSIZE + 1,
-                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                             iz_A, iz_b, iz_b_hat, y, err, dy,
-                                             w, v);
+                                             BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                             hc, iz_A, iz_b, iz_b_hat, y, err,
+                                             dy, w, v);
             last_block_complete(me, ++k, mutex_last);
           }
 
@@ -370,22 +375,22 @@ void *solver_thread(void *argument)
 
           get_from_pred(me, k, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
           tiled_block_scatter_interm_stage(k, first_elem, BLOCKSIZE, s, t, h,
-                                           A, b, b_hat, c, iz_A, iz_b, iz_b_hat,
-                                           y, err, dy, w, v);
+                                           hA, hb, hb_hat, hc, iz_A, iz_b,
+                                           iz_b_hat, y, err, dy, w, v);
           first_block_complete(me, ++k, mutex_first);
 
           for (i = first_elem + BLOCKSIZE; i < last_elem - BLOCKSIZE + 1;
                i += BLOCKSIZE)
-            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                             b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                             err, dy, w, v);
+            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                             hb_hat, hc, iz_A, iz_b, iz_b_hat,
+                                             y, err, dy, w, v);
         }
 
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
         unlock_init_phase(me, mutex_last);
         tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
-                                       s, t, h, b, b_hat, c, iz_b, iz_b_hat, y,
-                                       err, dy, w, v, &err_max);
+                                       s, t, h, hb, hb_hat, hc, iz_b, iz_b_hat,
+                                       y, err, dy, w, v, &err_max);
 
         wait_succ_init_complete(me, mutex_first);
 
@@ -397,25 +402,25 @@ void *solver_thread(void *argument)
 
           get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
           tiled_block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h,
-                                           A, b, b_hat, c, iz_A, iz_b, iz_b_hat,
-                                           y, err, dy, w, v);
+                                           hA, hb, hb_hat, hc, iz_A, iz_b,
+                                           iz_b_hat, y, err, dy, w, v);
           first_block_complete(me, k, mutex_first);
 
           for (i = first_elem + BLOCKSIZE; k < s - 1; i += BLOCKSIZE)
-            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, A, b,
-                                             b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                             err, dy, w, v);
+            tiled_block_scatter_interm_stage(k++, i, BLOCKSIZE, s, t, h, hA, hb,
+                                             hb_hat, hc, iz_A, iz_b, iz_b_hat,
+                                             y, err, dy, w, v);
 
-          tiled_block_scatter_last_stage(i, BLOCKSIZE, s, t, h, b, b_hat, c,
+          tiled_block_scatter_last_stage(i, BLOCKSIZE, s, t, h, hb, hb_hat, hc,
                                          iz_b, iz_b_hat, y, err, dy, w, v,
                                          &err_max);
         }
 
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
 
-        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b,
-                                       b_hat, c, iz_b, iz_b_hat, y, err, dy, w,
-                                       v, &err_max);
+        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, hb,
+                                       hb_hat, hc, iz_b, iz_b_hat, y, err, dy,
+                                       w, v, &err_max);
       }
     }
     else                        /* more than s blocks per thread  */
@@ -426,44 +431,44 @@ void *solver_thread(void *argument)
 
         lock_init_phase(me, mutex_first);
 
-        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, iz_A,
-                                        b, b_hat, c, y, err, dy, w, v);
+        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, hA,
+                                        iz_A, hb, hb_hat, hc, y, err, dy, w, v);
         first_block_complete(me, 1, mutex_first);
 
         for (j = 1; j < s - 1; j++)
         {
           tiled_block_scatter_first_stage(first_elem + j * BLOCKSIZE, BLOCKSIZE,
-                                          s, t, h, A, iz_A, b, b_hat, c, y, err,
-                                          dy, w, v);
+                                          s, t, h, hA, iz_A, hb, hb_hat, hc, y,
+                                          err, dy, w, v);
           for (i = 1; i < j; i++)
             tiled_block_scatter_interm_stage(i,
                                              first_elem + j * BLOCKSIZE -
                                              i * BLOCKSIZE, BLOCKSIZE, s, t, h,
-                                             A, b, b_hat, c, iz_A, iz_b,
+                                             hA, hb, hb_hat, hc, iz_A, iz_b,
                                              iz_b_hat, y, err, dy, w, v);
           get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-          tiled_block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h, A,
-                                           b, b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                           err, dy, w, v);
+          tiled_block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h,
+                                           hA, hb, hb_hat, hc, iz_A, iz_b,
+                                           iz_b_hat, y, err, dy, w, v);
           first_block_complete(me, j + 1, mutex_first);
         }
 
         tiled_block_scatter_first_stage(first_elem + (s - 1) * BLOCKSIZE,
-                                        BLOCKSIZE, s, t, h, A, iz_A, b, b_hat,
-                                        c, y, err, dy, w, v);
+                                        BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                        hb_hat, hc, y, err, dy, w, v);
         for (i = 1; i < j; i++)
           tiled_block_scatter_interm_stage(i,
                                            first_elem + (s - 1) * BLOCKSIZE -
-                                           i * BLOCKSIZE, BLOCKSIZE, s, t, h, A,
-                                           b, b_hat, c, iz_A, iz_b, iz_b_hat, y,
-                                           err, dy, w, v);
+                                           i * BLOCKSIZE, BLOCKSIZE, s, t, h,
+                                           hA, hb, hb_hat, hc, iz_A, iz_b,
+                                           iz_b_hat, y, err, dy, w, v);
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
 
         unlock_init_phase(me, mutex_first);
 
-        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat,
-                                       c, iz_b, iz_b_hat, y, err, dy, w, v,
-                                       &err_max);
+        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, hb,
+                                       hb_hat, hc, iz_b, iz_b_hat, y, err, dy,
+                                       w, v, &err_max);
 
         wait_pred_init_complete(me, mutex_last);
 
@@ -472,60 +477,61 @@ void *solver_thread(void *argument)
         for (j = first_elem + s * BLOCKSIZE; j < last_elem - BLOCKSIZE + 1;
              j += BLOCKSIZE)
         {
-          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, iz_A, b,
-                                          b_hat, c, y, err, dy, w, v);
+          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                          hb_hat, hc, y, err, dy, w, v);
           for (i = 1; i < s - 1; i++)
             tiled_block_scatter_interm_stage(i, j - i * BLOCKSIZE, BLOCKSIZE, s,
-                                             t, h, A, b, b_hat, c, iz_A, iz_b,
-                                             iz_b_hat, y, err, dy, w, v);
+                                             t, h, hA, hb, hb_hat, hc, iz_A,
+                                             iz_b, iz_b_hat, y, err, dy, w, v);
           tiled_block_scatter_last_stage(j - (s - 1) * BLOCKSIZE, BLOCKSIZE, s,
-                                         t, h, b, b_hat, c, iz_b, iz_b_hat, y,
-                                         err, dy, w, v, &err_max);
+                                         t, h, hb, hb_hat, hc, iz_b, iz_b_hat,
+                                         y, err, dy, w, v, &err_max);
         }
 
         /* finalization */
 
         tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                        t, h, A, iz_A, b, b_hat, c, y, err, dy,
-                                        w, v);
+                                        t, h, hA, iz_A, hb, hb_hat, hc, y, err,
+                                        dy, w, v);
         last_block_complete(me, 1, mutex_last);
 
         for (i = 1; i < s - 1; i++)
           tiled_block_scatter_interm_stage(i,
                                            last_elem - (i + 1) * BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
         tiled_block_scatter_last_stage(last_elem - s * BLOCKSIZE + 1, BLOCKSIZE,
-                                       s, t, h, b, b_hat, c, iz_b, iz_b_hat, y,
-                                       err, dy, w, v, &err_max);
+                                       s, t, h, hb, hb_hat, hc, iz_b, iz_b_hat,
+                                       y, err, dy, w, v, &err_max);
 
         for (j = 1; j < s - 1; j++)
         {
           get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
           tiled_block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           last_block_complete(me, j + 1, mutex_last);
 
           for (i = j + 1; i < s - 1; i++)
             tiled_block_scatter_interm_stage(i,
                                              last_elem - (i - j +
                                                           1) * BLOCKSIZE + 1,
-                                             BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                             iz_A, iz_b, iz_b_hat, y, err, dy,
-                                             w, v);
+                                             BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                             hc, iz_A, iz_b, iz_b_hat, y, err,
+                                             dy, w, v);
 
           tiled_block_scatter_last_stage(last_elem - (s - j) * BLOCKSIZE + 1,
-                                         BLOCKSIZE, s, t, h, b, b_hat, c, iz_b,
-                                         iz_b_hat, y, err, dy, w, v, &err_max);
+                                         BLOCKSIZE, s, t, h, hb, hb_hat, hc,
+                                         iz_b, iz_b_hat, y, err, dy, w, v,
+                                         &err_max);
         }
 
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
         tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s,
-                                       t, h, b, b_hat, c, iz_b, iz_b_hat, y,
+                                       t, h, hb, hb_hat, hc, iz_b, iz_b_hat, y,
                                        err, dy, w, v, &err_max);
       }
       else                      /* !me_is_even */
@@ -535,46 +541,46 @@ void *solver_thread(void *argument)
         lock_init_phase(me, mutex_last);
 
         tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
-                                        s, t, h, A, iz_A, b, b_hat, c, y, err,
-                                        dy, w, v);
+                                        s, t, h, hA, iz_A, hb, hb_hat, hc, y,
+                                        err, dy, w, v);
         last_block_complete(me, 1, mutex_last);
 
         for (j = 1; j < s - 1; j++)
         {
           tiled_block_scatter_first_stage(last_elem - (j + 1) * BLOCKSIZE + 1,
-                                          BLOCKSIZE, s, t, h, A, iz_A, b, b_hat,
-                                          c, y, err, dy, w, v);
+                                          BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                          hb_hat, hc, y, err, dy, w, v);
           for (i = 1; i < j; i++)
             tiled_block_scatter_interm_stage(i,
                                              last_elem - (j - i +
                                                           1) * BLOCKSIZE + 1,
-                                             BLOCKSIZE, s, t, h, A, b, b_hat,
-                                             c, iz_A, iz_b, iz_b_hat, y, err,
+                                             BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                             hc, iz_A, iz_b, iz_b_hat, y, err,
                                              dy, w, v);
           get_from_succ(me, j, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
           tiled_block_scatter_interm_stage(j, last_elem - BLOCKSIZE + 1,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
           last_block_complete(me, j + 1, mutex_last);
         }
 
         tiled_block_scatter_first_stage(last_elem - s * BLOCKSIZE + 1,
-                                        BLOCKSIZE, s, t, h, A, iz_A, b, b_hat,
-                                        c, y, err, dy, w, v);
+                                        BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                        hb_hat, hc, y, err, dy, w, v);
         for (i = 1; i < j; i++)
           tiled_block_scatter_interm_stage(i,
                                            last_elem - (s - i) * BLOCKSIZE +
-                                           1, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                           c, iz_A, iz_b, iz_b_hat, y, err, dy,
-                                           w, v);
+                                           1, BLOCKSIZE, s, t, h, hA, hb,
+                                           hb_hat, hc, iz_A, iz_b, iz_b_hat, y,
+                                           err, dy, w, v);
         get_from_succ(me, s - 1, w, w_succ, last_elem, BLOCKSIZE, mutex_first);
 
         unlock_init_phase(me, mutex_last);
 
         tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE,
-                                       s, t, h, b, b_hat, c, iz_b, iz_b_hat, y,
-                                       err, dy, w, v, &err_max);
+                                       s, t, h, hb, hb_hat, hc, iz_b, iz_b_hat,
+                                       y, err, dy, w, v, &err_max);
 
         wait_succ_init_complete(me, mutex_first);
 
@@ -583,57 +589,58 @@ void *solver_thread(void *argument)
         for (j = last_elem - (s + 1) * BLOCKSIZE + 1; j > first_elem;
              j -= BLOCKSIZE)
         {
-          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, A, iz_A, b,
-                                          b_hat, c, y, err, dy, w, v);
+          tiled_block_scatter_first_stage(j, BLOCKSIZE, s, t, h, hA, iz_A, hb,
+                                          hb_hat, hc, y, err, dy, w, v);
           for (i = 1; i < s - 1; i++)
             tiled_block_scatter_interm_stage(i, j + i * BLOCKSIZE, BLOCKSIZE,
-                                             s, t, h, A, b, b_hat, c, iz_A,
+                                             s, t, h, hA, hb, hb_hat, hc, iz_A,
                                              iz_b, iz_b_hat, y, err, dy, w, v);
           tiled_block_scatter_last_stage(j + (s - 1) * BLOCKSIZE, BLOCKSIZE, s,
-                                         t, h, b, b_hat, c, iz_b, iz_b_hat, y,
-                                         err, dy, w, v, &err_max);
+                                         t, h, hb, hb_hat, hc, iz_b, iz_b_hat,
+                                         y, err, dy, w, v, &err_max);
         }
 
         /* finalization */
 
-        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, iz_A,
-                                        b, b_hat, c, y, err, dy, w, v);
+        tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, hA,
+                                        iz_A, hb, hb_hat, hc, y, err, dy, w, v);
         first_block_complete(me, 1, mutex_first);
 
         for (i = 1; i < s - 1; i++)
           tiled_block_scatter_interm_stage(i, first_elem + i * BLOCKSIZE,
-                                           BLOCKSIZE, s, t, h, A, b, b_hat, c,
-                                           iz_A, iz_b, iz_b_hat, y, err, dy, w,
-                                           v);
+                                           BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                           hc, iz_A, iz_b, iz_b_hat, y, err, dy,
+                                           w, v);
 
         tiled_block_scatter_last_stage(first_elem + (s - 1) * BLOCKSIZE,
-                                       BLOCKSIZE, s, t, h, b, b_hat, c, iz_b,
+                                       BLOCKSIZE, s, t, h, hb, hb_hat, hc, iz_b,
                                        iz_b_hat, y, err, dy, w, v, &err_max);
 
         for (j = 1; j < s - 1; j++)
         {
           get_from_pred(me, j, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
           tiled_block_scatter_interm_stage(j, first_elem, BLOCKSIZE, s, t, h,
-                                           A, b, b_hat, c, iz_A, iz_b, iz_b_hat,
-                                           y, err, dy, w, v);
+                                           hA, hb, hb_hat, hc, iz_A, iz_b,
+                                           iz_b_hat, y, err, dy, w, v);
           first_block_complete(me, j + 1, mutex_first);
 
           for (i = j + 1; i < s - 1; i++)
             tiled_block_scatter_interm_stage(i,
                                              first_elem + (i - j) * BLOCKSIZE,
-                                             BLOCKSIZE, s, t, h, A, b, b_hat,
-                                             c, iz_A, iz_b, iz_b_hat, y, err,
+                                             BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                                             hc, iz_A, iz_b, iz_b_hat, y, err,
                                              dy, w, v);
 
           tiled_block_scatter_last_stage(first_elem + (s - 1 - j) * BLOCKSIZE,
-                                         BLOCKSIZE, s, t, h, b, b_hat, c, iz_b,
-                                         iz_b_hat, y, err, dy, w, v, &err_max);
+                                         BLOCKSIZE, s, t, h, hb, hb_hat, hc,
+                                         iz_b, iz_b_hat, y, err, dy, w, v,
+                                         &err_max);
         }
 
         get_from_pred(me, s - 1, w, w_pred, first_elem, BLOCKSIZE, mutex_last);
-        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b,
-                                       b_hat, c, iz_b, iz_b_hat, y, err, dy, w,
-                                       v, &err_max);
+        tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, hb,
+                                       hb_hat, hc, iz_b, iz_b_hat, y, err, dy,
+                                       w, v, &err_max);
       }
     }
 
@@ -650,6 +657,7 @@ void *solver_thread(void *argument)
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
 
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
   free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE(v);

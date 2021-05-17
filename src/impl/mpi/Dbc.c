@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i;
   double **w, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
@@ -47,6 +48,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   ALLOC2D(w, s, ode_size, double);
 
@@ -91,6 +94,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     my_err_max = 0.0;
 
     /* send last block of y to next processor and 
@@ -110,7 +115,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     /* evaluate the inner blocks of the first stage */
 
     block_scatter_first_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
-                              s, t, h, A, b, b_hat, c, y, err, dy, w);
+                              s, t, h, hA, hb, hb_hat, hc, y, err, dy, w);
 
     /* evaluate first block of the first stage and send 
        result to the previous processor */
@@ -118,8 +123,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     complete_recv_pred(&recv_req_pred, &status);
     start_recv_pred(w[1], first_elem, BLOCKSIZE, 1, &recv_req_pred);
 
-    block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat, c, y,
-                              err, dy, w);
+    block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, hA, hb, hb_hat,
+                              hc, y, err, dy, w);
 
     complete_send_pred(&send_req_pred, &status);
     start_send_pred(w[1], first_elem, BLOCKSIZE, 1, &send_req_pred);
@@ -130,8 +135,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     complete_recv_succ(&recv_req_succ, &status);
     start_recv_succ(w[1], last_elem, BLOCKSIZE, 1, &recv_req_succ);
 
-    block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, A,
-                              b, b_hat, c, y, err, dy, w);
+    block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, hA,
+                              hb, hb_hat, hc, y, err, dy, w);
 
     complete_send_succ(&send_req_succ, &status);
     start_send_succ(w[1], last_elem, BLOCKSIZE, 1, &send_req_succ);
@@ -141,8 +146,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
       /* evaluate the inner blocks of stage i */
 
       block_scatter_interm_stage(i, first_elem + BLOCKSIZE,
-                                 num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
-                                 b_hat, c, y, err, dy, w);
+                                 num_elems - 2 * BLOCKSIZE, s, t, h, hA, hb,
+                                 hb_hat, hc, y, err, dy, w);
 
       /* evaluate first block of stage i and send 
          result to the previous processor */
@@ -150,8 +155,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
       complete_recv_pred(&recv_req_pred, &status);
       start_recv_pred(w[i + 1], first_elem, BLOCKSIZE, i + 1, &recv_req_pred);
 
-      block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                 c, y, err, dy, w);
+      block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, hA, hb,
+                                 hb_hat, hc, y, err, dy, w);
 
       complete_send_pred(&send_req_pred, &status);
       start_send_pred(w[i + 1], first_elem, BLOCKSIZE, i + 1, &send_req_pred);
@@ -163,7 +168,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
       start_recv_succ(w[i + 1], last_elem, BLOCKSIZE, i + 1, &recv_req_succ);
 
       block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
-                                 h, A, b, b_hat, c, y, err, dy, w);
+                                 h, hA, hb, hb_hat, hc, y, err, dy, w);
 
       complete_send_succ(&send_req_succ, &status);
       start_send_succ(w[i + 1], last_elem, BLOCKSIZE, i + 1, &send_req_succ);
@@ -172,12 +177,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     /* evaluate the inner blocks of stage s-1 */
 
     block_scatter_last_stage(first_elem + BLOCKSIZE, num_elems - 2 * BLOCKSIZE,
-                             s, t, h, b, b_hat, c, y, err, dy, w, &my_err_max);
+                             s, t, h, hb, hb_hat, hc, y, err, dy, w,
+                             &my_err_max);
 
     /* evaluate first block of stage s-1 */
 
     complete_recv_pred(&recv_req_pred, &status);
-    block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c, y,
+    block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, hb, hb_hat, hc, y,
                              err, dy, w, &my_err_max);
 
     complete_send_pred(&send_req_pred, &status);
@@ -185,8 +191,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     /* evaluate last block of stage s-1 */
 
     complete_recv_succ(&recv_req_succ, &status);
-    block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, b,
-                             b_hat, c, y, err, dy, w, &my_err_max);
+    block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t, h, hb,
+                             hb_hat, hc, y, err, dy, w, &my_err_max);
 
     complete_send_succ(&send_req_succ, &status);
 
@@ -207,6 +213,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
               y, elem_length, elem_offset, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   FREE2D(w);
   FREE(err);

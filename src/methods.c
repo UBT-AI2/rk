@@ -40,6 +40,25 @@ void zero_pattern(double **A, double *b, double *b_hat, double *c,
 
 /******************************************************************************/
 
+void premult(double h, double **A, double *b, double *b_hat, double *c,
+             double **hA, double *hb, double *hb_hat, double *hc, int s)
+{
+  int i, j;
+
+  for (i = 0; i < s; i++)
+  {
+
+    for (j = 0; j < i; j++)
+      hA[i][j] = h * A[i][j];
+
+    hb[i] = h * b[i];
+    hb_hat[i] = h * b_hat[i];
+    hc[i] = h * c[i];
+  }
+}
+
+/******************************************************************************/
+
 void RKF23(double ***A, double **b, double **b_hat, double **c, int *s,
            int *ord)
 {

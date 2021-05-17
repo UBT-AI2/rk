@@ -51,6 +51,7 @@ void *solver_thread(void *argument)
 {
   double **v, *w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
+  double **hA, *hb, *hb_hat, *hc;
   double timer, err_max, h, t, tol, t0, te;
   int j, l, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
@@ -88,6 +89,8 @@ void *solver_thread(void *argument)
 
   w = y_old = dy;
 
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
+
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
   copy_vector(y + first_elem, y0 + first_elem, num_elems);
@@ -98,17 +101,19 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    block_rhs(0, first_elem, num_elems, t, h, c, y, v);
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
+    block_rhs(0, first_elem, num_elems, t, h, hc, y, v);
 
     for (l = 1; l < s; l++)
     {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
+      block_gather_interm_stage(l, first_elem, num_elems, hA, y, w, v);
       barrier_wait(bar);
-      block_rhs(l, first_elem, num_elems, t, h, c, w, v);
+      block_rhs(l, first_elem, num_elems, t, h, hc, w, v);
       barrier_wait(bar);
     }
 
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    block_gather_output(first_elem, num_elems, s, hb, hb_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)
@@ -133,6 +138,8 @@ void *solver_thread(void *argument)
 
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
+
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   return NULL;
 }

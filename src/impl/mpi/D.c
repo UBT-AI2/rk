@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i;
   double **w, *y_old, *err, *dy, *gathered_w;
   double **A, *b, *b_hat, *c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
@@ -44,6 +45,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   ALLOC2D(w, s, ode_size, double);
 
@@ -71,6 +74,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     my_err_max = 0.0;
 
     /* first stage (0) */
@@ -80,8 +85,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                    MPI_COMM_WORLD);
 
     swap_vectors(&y, &gathered_w);
-    block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat, c, y,
-                              err, dy, w);
+    block_scatter_first_stage(first_elem, num_elems, s, t, h, hA, hb, hb_hat,
+                              hc, y, err, dy, w);
     swap_vectors(&y, &gathered_w);
 
     /* stage 1 to s-2 */
@@ -93,8 +98,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                      MPI_COMM_WORLD);
 
       swap_vectors(&w[i], &gathered_w);
-      block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b, b_hat,
-                                 c, y, err, dy, w);
+      block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, hA, hb,
+                                 hb_hat, hc, y, err, dy, w);
       swap_vectors(&w[i], &gathered_w);
 
     }
@@ -106,7 +111,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                    MPI_COMM_WORLD);
 
     swap_vectors(&w[s - 1], &gathered_w);
-    block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c, y,
+    block_scatter_last_stage(first_elem, num_elems, s, t, h, hb, hb_hat, hc, y,
                              err, dy, w, &my_err_max);
     swap_vectors(&w[s - 1], &gathered_w);
 
@@ -127,6 +132,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
               y, elem_length, elem_offset, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   FREE2D(w);
   FREE(err);
