@@ -54,6 +54,7 @@ void *solver_thread(void *argument)
 {
   double **w, *y, *y0, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double timer, err_max, h, t, tol, t0, te;
   int i, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
@@ -97,6 +98,9 @@ void *solver_thread(void *argument)
 
   v = MALLOC(BLOCKSIZE, double);
 
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
+
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
   copy_vector(y + first_elem, y0 + first_elem, num_elems);
@@ -115,21 +119,21 @@ void *solver_thread(void *argument)
     /* evaluate the inner blocks of the first stage */
 
     tiled_block_scatter_first_stage(first_elem + BLOCKSIZE,
-                                    num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
-                                    b_hat, c, y, err, dy, w, v);
+                                    num_elems - 2 * BLOCKSIZE, s, t, h, A, iz_A,
+                                    b, b_hat, c, y, err, dy, w, v);
 
     /* evaluate first block of the first stage and send result to the
        previous processor */
 
-    tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, b, b_hat,
-                                    c, y, err, dy, w, v);
+    tiled_block_scatter_first_stage(first_elem, BLOCKSIZE, s, t, h, A, iz_A, b,
+                                    b_hat, c, y, err, dy, w, v);
     first_block_complete(me, 1, mutex_first);
 
     /* evaluate last block of the second stage and send result to the
        next processor */
 
     tiled_block_scatter_first_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
-                                    h, A, b, b_hat, c, y, err, dy, w, v);
+                                    h, A, iz_A, b, b_hat, c, y, err, dy, w, v);
     last_block_complete(me, 1, mutex_last);
 
     for (i = 1; i < s - 1; i++)
@@ -138,14 +142,16 @@ void *solver_thread(void *argument)
 
       tiled_block_scatter_interm_stage(i, first_elem + BLOCKSIZE,
                                        num_elems - 2 * BLOCKSIZE, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w, v);
+                                       b_hat, c, iz_A, iz_b, iz_b_hat, y, err,
+                                       dy, w, v);
 
       /* evaluate first block of stage i and send result to the
          previous processor */
 
       wait_for_pred(me, i, mutex_last);
       tiled_block_scatter_interm_stage(i, first_elem, BLOCKSIZE, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w, v);
+                                       b_hat, c, iz_A, iz_b, iz_b_hat, y, err,
+                                       dy, w, v);
       first_block_complete(me, i + 1, mutex_first);
       release_pred(me, i, mutex_last);
 
@@ -154,8 +160,8 @@ void *solver_thread(void *argument)
 
       wait_for_succ(me, i, mutex_first);
       tiled_block_scatter_interm_stage(i, last_elem - BLOCKSIZE + 1, BLOCKSIZE,
-                                       s, t, h, A, b, b_hat, c, y, err, dy, w,
-                                       v);
+                                       s, t, h, A, b, b_hat, c, iz_A, iz_b,
+                                       iz_b_hat, y, err, dy, w, v);
       last_block_complete(me, i + 1, mutex_last);
       release_succ(me, i, mutex_first);
     }
@@ -164,20 +170,22 @@ void *solver_thread(void *argument)
 
     tiled_block_scatter_last_stage(first_elem + BLOCKSIZE,
                                    num_elems - 2 * BLOCKSIZE, s, t, h, b, b_hat,
-                                   c, y, err, dy, w, v, &err_max);
+                                   c, iz_b, iz_b_hat, y, err, dy, w, v,
+                                   &err_max);
 
     /* evaluate first block of stage s - 1 */
 
     wait_for_pred(me, s - 1, mutex_last);
     tiled_block_scatter_last_stage(first_elem, BLOCKSIZE, s, t, h, b, b_hat, c,
-                                   y, err, dy, w, v, &err_max);
+                                   iz_b, iz_b_hat, y, err, dy, w, v, &err_max);
     release_pred(me, s - 1, mutex_last);
 
     /* evaluate last block of stage s - 1 */
 
     wait_for_succ(me, s - 1, mutex_first);
     tiled_block_scatter_last_stage(last_elem - BLOCKSIZE + 1, BLOCKSIZE, s, t,
-                                   h, b, b_hat, c, y, err, dy, w, v, &err_max);
+                                   h, b, b_hat, c, iz_b, iz_b_hat, y, err, dy,
+                                   w, v, &err_max);
     release_succ(me, s - 1, mutex_first);
 
     err_max = reduction_max(red, err_max);
@@ -192,6 +200,8 @@ void *solver_thread(void *argument)
 
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
+
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE(v);
 

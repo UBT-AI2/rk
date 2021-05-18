@@ -51,6 +51,7 @@ void *solver_thread(void *argument)
 {
   double **v, *w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double timer, err_max, h, t, tol, t0, te;
   int j, l, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
@@ -88,6 +89,9 @@ void *solver_thread(void *argument)
 
   w = y_old = dy;
 
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
+
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
   copy_vector(y + first_elem, y0 + first_elem, num_elems);
@@ -102,13 +106,15 @@ void *solver_thread(void *argument)
 
     for (l = 1; l < s; l++)
     {
-      tiled_block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
+      tiled_block_gather_interm_stage(l, first_elem, num_elems, A, iz_A, y, w,
+                                      v);
       barrier_wait(bar);
       block_rhs(l, first_elem, num_elems, t, h, c, w, v);
       barrier_wait(bar);
     }
 
-    tiled_block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    tiled_block_gather_output(first_elem, num_elems, s, b, b_hat, iz_b,
+                              iz_b_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)
@@ -133,6 +139,8 @@ void *solver_thread(void *argument)
 
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
+
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   return NULL;
 }

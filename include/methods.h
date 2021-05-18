@@ -49,6 +49,35 @@ static inline void free_emb_rk_method(double ***A, double **b, double **b_hat,
   *b = *b_hat = *c = NULL;
 }
 
+static inline void alloc_zero_pattern(int ***A, int **b, int **b_hat,
+                                      int **c, int s)
+{
+  int i;
+  *A = MALLOC(s, int *);
+  (*A)[0] = MALLOC((s + 3) * s, int);
+  for (i = 1; i < s; i++)
+    (*A)[i] = (*A)[i - 1] + s;
+  *b = (*A)[s - 1] + s;
+  *b_hat = *b + s;
+  *c = *b_hat + s;
+}
+
+static inline void free_zero_pattern(int ***A, int **b, int **b_hat,
+                                     int **c, int s)
+{
+  FREE((*A)[0]);
+  FREE(*A);
+  *b = *b_hat = *c = NULL;
+}
+
+/******************************************************************************/
+/* Precompute flags for zero entries                                          */
+/******************************************************************************/
+
+void zero_pattern(double **A, double *b, double *b_hat, double *c,
+                  int **is_zero_A, int *is_zero_b, int *is_zero_b_hat,
+                  int *is_zero_c, int s);
+
 /******************************************************************************/
 /* Embedded RK methods                                                        */
 /******************************************************************************/

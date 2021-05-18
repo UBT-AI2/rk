@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i, j, l;
   double **v, *w, *y_old, *err, *dy, *gathered_w;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
@@ -44,6 +45,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
 
   ALLOC2D(v, s, ode_size, double);
 
@@ -80,18 +84,17 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (l = 1; l < s; l++)
     {
-      block_gather_vec_interm_stage(l, first_elem, num_elems, A, y, w, v);
-
-      MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE,
-                     gathered_w, elem_length, elem_offset, MPI_DOUBLE,
-                     MPI_COMM_WORLD);
+      block_gather_vec_interm_stage(l, first_elem, num_elems, A, iz_A, y, w, v);
+      MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE, gathered_w,
+                     elem_length, elem_offset, MPI_DOUBLE, MPI_COMM_WORLD);
 
       block_rhs(l, first_elem, num_elems, t, h, c, gathered_w, v);
     }
 
     /* output approximation */
 
-    block_gather_vec_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    block_gather_vec_output(first_elem, num_elems, s, b, b_hat, iz_b, iz_b_hat,
+                            err, dy, v);
 
     my_err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)
@@ -119,6 +122,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
               y, elem_length, elem_offset, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE2D(v);
   FREE(dy);

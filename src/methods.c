@@ -21,6 +21,25 @@
 
 /******************************************************************************/
 
+void zero_pattern(double **A, double *b, double *b_hat, double *c,
+                  int **is_zero_A, int *is_zero_b, int *is_zero_b_hat,
+                  int *is_zero_c, int s)
+{
+  int i, j;
+
+  for (i = 0; i < s; i++)
+  {
+    for (j = 0; j < s; j++)
+      is_zero_A[i][j] = (A[i][j] != 0.0);
+
+    is_zero_b[i] = (b[i] != 0.0);
+    is_zero_b_hat[i] = (b_hat[i] != 0.0);
+    is_zero_c[i] = (c[i] != 0.0);
+  }
+}
+
+/******************************************************************************/
+
 void RKF23(double ***A, double **b, double **b_hat, double **c, int *s,
            int *ord)
 {

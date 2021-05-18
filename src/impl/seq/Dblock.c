@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i;
   double **w, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double err_max;
   int s, ord;
   double h, t;
@@ -39,6 +40,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
 
   ALLOC2D(w, s, ode_size, double);
 
@@ -59,15 +63,15 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   {
     err_max = 0.0;
 
-    tiled_block_scatter_first_stage(0, ode_size, s, t, h, A, b, b_hat, c, y,
-                                    err, dy, w, v);
+    tiled_block_scatter_first_stage(0, ode_size, s, t, h, A, iz_A, b, b_hat, c,
+                                    y, err, dy, w, v);
 
     for (i = 1; i < s - 1; i++)
       tiled_block_scatter_interm_stage(i, 0, ode_size, s, t, h, A, b, b_hat, c,
-                                       y, err, dy, w, v);
+                                       iz_A, iz_b, iz_b_hat, y, err, dy, w, v);
 
-    tiled_block_scatter_last_stage(0, ode_size, s, t, h, b, b_hat, c, y, err,
-                                   dy, w, v, &err_max);
+    tiled_block_scatter_last_stage(0, ode_size, s, t, h, b, b_hat, c, iz_b,
+                                   iz_b_hat, y, err, dy, w, v, &err_max);
 
     /* step control */
 
@@ -77,7 +81,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   timer_stop(&timer);
 
-  free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE2D(w);
   FREE(err);

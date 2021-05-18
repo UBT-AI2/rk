@@ -26,6 +26,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   double **v, *y_old, *err, *w, *dy;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double err_max;
   int s, ord;
   double h, t;
@@ -40,6 +41,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; ++i)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
 
   ALLOC2D(v, s, ode_size, double);
 
@@ -62,13 +66,14 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (l = 1; l < s; l++)
     {
-      tiled_block_gather_interm_stage(l, 0, ode_size, A, y, w, v);
+      tiled_block_gather_interm_stage(l, 0, ode_size, A, iz_A, y, w, v);
       block_rhs(l, 0, ode_size, t, h, c, w, v);
     }
 
     /* output approximation */
 
-    tiled_block_gather_output(0, ode_size, s, b, b_hat, err, dy, v);
+    tiled_block_gather_output(0, ode_size, s, b, b_hat, iz_b, iz_b_hat, err, dy,
+                              v);
 
     err_max = 0.0;
     for (j = 0; j < ode_size; j++)
@@ -88,6 +93,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   timer_stop(&timer);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE2D(v);
   FREE(dy);

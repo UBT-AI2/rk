@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i;
   double **w, *y_old, *err, *dy, *gathered_w, *v;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
@@ -44,6 +45,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
 
   ALLOC2D(w, s, ode_size, double);
 
@@ -82,8 +86,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                    MPI_COMM_WORLD);
 
     swap_vectors(&y, &gathered_w);
-    tiled_block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat,
-                                    c, y, err, dy, w, v);
+    tiled_block_scatter_first_stage(first_elem, num_elems, s, t, h, A, iz_A, b,
+                                    b_hat, c, y, err, dy, w, v);
     swap_vectors(&y, &gathered_w);
 
     /* stage 1 to s-2 */
@@ -96,7 +100,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
       swap_vectors(&w[i], &gathered_w);
       tiled_block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w, v);
+                                       b_hat, c, iz_A, iz_b, iz_b_hat, y, err,
+                                       dy, w, v);
       swap_vectors(&w[i], &gathered_w);
 
     }
@@ -109,7 +114,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     swap_vectors(&w[s - 1], &gathered_w);
     tiled_block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c,
-                                   y, err, dy, w, v, &my_err_max);
+                                   iz_b, iz_b_hat, y, err, dy, w, v,
+                                   &my_err_max);
     swap_vectors(&w[s - 1], &gathered_w);
 
     /* step control */
@@ -129,6 +135,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
               y, elem_length, elem_offset, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE2D(w);
   FREE(err);

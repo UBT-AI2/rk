@@ -41,8 +41,8 @@ static inline void block_rhs(int l, int first, int size, double t, double h,
 /******************************************************************************/
 
 static inline void block_gather_interm_stage(int l, int first, int size,
-                                             double **A, double *y, double *w,
-                                             double **v)
+                                             double **A, double *y,
+                                             double *w, double **v)
 {
   int i, j;
 
@@ -79,12 +79,13 @@ static inline void block_gather_output(int first, int size, int s,
 /******************************************************************************/
 
 static inline void block_gather_vec_interm_stage(int l, int first, int size,
-                                                 double **A, double *y,
-                                                 double *w, double **v)
+                                                 double **A, int **iz_A,
+                                                 double *y, double *w,
+                                                 double **v)
 {
   int i, j;
 
-  if (A[l][0] != 0.0)
+  if (iz_A[l][0])
     for (j = first; j < first + size; j++)
       w[j] = y[j] + A[l][0] * v[0][j];
   else
@@ -92,7 +93,7 @@ static inline void block_gather_vec_interm_stage(int l, int first, int size,
       w[j] = y[j];
 
   for (i = 1; i < l; i++)
-    if (A[l][i] != 0.0)
+    if (iz_A[l][i])
       for (j = first; j < first + size; j++)
         w[j] += A[l][i] * v[i][j];
 }
@@ -100,8 +101,9 @@ static inline void block_gather_vec_interm_stage(int l, int first, int size,
 /******************************************************************************/
 
 static inline void block_gather_vec_output(int first, int size, int s,
-                                           double *b, double *b_hat,
-                                           double *err, double *dy, double **v)
+                                           double *b, double *b_hat, int *iz_b,
+                                           int *iz_b_hat, double *err,
+                                           double *dy, double **v)
 {
   int i, j;
 
@@ -112,9 +114,9 @@ static inline void block_gather_vec_output(int first, int size, int s,
   }
 
   for (i = 1; i < s; i++)
-    if (b_hat[i] != 0.0)
+    if (iz_b_hat[i])
     {
-      if (b[i] != 0.0)
+      if (iz_b[i])
       {
         for (j = first; j < first + size; j++)
         {
@@ -130,7 +132,7 @@ static inline void block_gather_vec_output(int first, int size, int s,
     }
     else
     {
-      if (b[i] != 0.0)
+      if (iz_b[i])
         for (j = first; j < first + size; j++)
           dy[j] += b[i] * v[i][j];
     }
@@ -139,8 +141,9 @@ static inline void block_gather_vec_output(int first, int size, int s,
 /******************************************************************************/
 
 static inline void tiled_block_gather_interm_stage(int l, int first, int size,
-                                                   double **A, double *y,
-                                                   double *w, double **v)
+                                                   double **A, int **iz_A,
+                                                   double *y, double *w,
+                                                   double **v)
 {
   int i, j, jj;
 
@@ -148,7 +151,7 @@ static inline void tiled_block_gather_interm_stage(int l, int first, int size,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
-    if (A[l][0] != 0.0)
+    if (iz_A[l][0])
       for (jj = 0; jj < count; jj++)
         w[j + jj] = y[j + jj] + A[l][0] * v[0][j + jj];
     else
@@ -156,7 +159,7 @@ static inline void tiled_block_gather_interm_stage(int l, int first, int size,
         w[j + jj] = y[j + jj];
 
     for (i = 1; i < l; i++)
-      if (A[l][i] != 0.0)
+      if (iz_A[l][i])
         for (jj = 0; jj < count; jj++)
           w[j + jj] += A[l][i] * v[i][j + jj];
   }
@@ -218,6 +221,7 @@ static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
 
 static inline void tiled_block_gather_output(int first, int size, int s,
                                              double *b, double *b_hat,
+                                             int *iz_b, int *iz_b_hat,
                                              double *err, double *dy,
                                              double **v)
 {
@@ -235,11 +239,11 @@ static inline void tiled_block_gather_output(int first, int size, int s,
 
     for (i = 1; i < s; i++)
     {
-      if (b_hat[i] != 0.0)
+      if (iz_b_hat[i])
         for (jj = 0; jj < count; jj++)
           err[j + jj] += b_hat[i] * v[i][j + jj];
 
-      if (b[i] != 0.0)
+      if (iz_b[i])
         for (jj = 0; jj < count; jj++)
           dy[j + jj] += b[i] * v[i][j + jj];
     }
@@ -321,11 +325,11 @@ static inline void block_scatter_last_stage(int first, int size, int s,
 
 static inline void tiled_block_scatter_first_stage(int first, int size, int s,
                                                    double t, double h,
-                                                   double **A, double *b,
-                                                   double *b_hat, double *c,
-                                                   double *y, double *err,
-                                                   double *dy, double **w,
-                                                   double *v)
+                                                   double **A, int **iz_A,
+                                                   double *b, double *b_hat,
+                                                   double *c, double *y,
+                                                   double *err, double *dy,
+                                                   double **w, double *v)
 {
   int j, l, jj;
 
@@ -339,7 +343,7 @@ static inline void tiled_block_scatter_first_stage(int first, int size, int s,
 
     for (l = 1; l < s; l++)
     {
-      if (A[l][0] != 0.0)
+      if (iz_A[l][0])
         for (jj = 0; jj < count; jj++)
           w[l][j + jj] = y[j + jj] + A[l][0] * v[jj];
       else
@@ -361,9 +365,10 @@ static inline void tiled_block_scatter_interm_stage(int i, int first, int size,
                                                     int s, double t, double h,
                                                     double **A, double *b,
                                                     double *b_hat, double *c,
-                                                    double *y, double *err,
-                                                    double *dy, double **w,
-                                                    double *v)
+                                                    int **iz_A, int *iz_b,
+                                                    int *iz_b_hat, double *y,
+                                                    double *err, double *dy,
+                                                    double **w, double *v)
 {
   int j, l, jj;
 
@@ -376,15 +381,15 @@ static inline void tiled_block_scatter_interm_stage(int i, int first, int size,
       v[jj] *= h;
 
     for (l = i + 1; l < s; l++)
-      if (A[l][i] != 0.0)
+      if (iz_A[l][i])
         for (jj = 0; jj < count; jj++)
           w[l][j + jj] += A[l][i] * v[jj];
 
-    if (b[i] != 0.0)
+    if (iz_b[i])
       for (jj = 0; jj < count; jj++)
         dy[j + jj] += b[i] * v[jj];
 
-    if (b_hat[i] != 0.0)
+    if (iz_b_hat[i])
       for (jj = 0; jj < count; jj++)
         err[j + jj] += b_hat[i] * v[jj];
   }
@@ -395,6 +400,7 @@ static inline void tiled_block_scatter_interm_stage(int i, int first, int size,
 static inline void tiled_block_scatter_last_stage(int first, int size, int s,
                                                   double t, double h, double *b,
                                                   double *b_hat, double *c,
+                                                  int *iz_b, int *iz_b_hat,
                                                   double *y, double *err,
                                                   double *dy, double **w,
                                                   double *v, double *err_max)
@@ -409,11 +415,11 @@ static inline void tiled_block_scatter_last_stage(int first, int size, int s,
     for (jj = 0; jj < count; jj++)
       v[jj] *= h;
 
-    if (b[i] != 0.0)
+    if (iz_b[i])
       for (jj = 0; jj < count; jj++)
         dy[j + jj] += b[i] * v[jj];
 
-    if (b_hat[i] != 0.0)
+    if (iz_b_hat[i])
       for (jj = 0; jj < count; jj++)
         err[j + jj] += b_hat[i] * v[jj];
 

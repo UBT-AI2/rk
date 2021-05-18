@@ -51,6 +51,7 @@ void *solver_thread(void *argument)
 {
   double **w, *y, *y0, *y_old, *err, *dy, *v;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double timer, err_max, h, t, tol, t0, te;
   int i, s, ord, first_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
@@ -89,6 +90,9 @@ void *solver_thread(void *argument)
 
   v = MALLOC(BLOCKSIZE, double);
 
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
+
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
   copy_vector(y + first_elem, y0 + first_elem, num_elems);
@@ -101,19 +105,20 @@ void *solver_thread(void *argument)
   {
     err_max = 0.0;
 
-    tiled_block_scatter_first_stage(first_elem, num_elems, s, t, h, A, b, b_hat,
-                                    c, y, err, dy, w, v);
+    tiled_block_scatter_first_stage(first_elem, num_elems, s, t, h, A, iz_A, b,
+                                    b_hat, c, y, err, dy, w, v);
 
     for (i = 1; i < s - 1; i++)
     {
       barrier_wait(bar);
       tiled_block_scatter_interm_stage(i, first_elem, num_elems, s, t, h, A, b,
-                                       b_hat, c, y, err, dy, w, v);
+                                       b_hat, c, iz_A, iz_b, iz_b_hat, y, err,
+                                       dy, w, v);
     }
 
     barrier_wait(bar);
     tiled_block_scatter_last_stage(first_elem, num_elems, s, t, h, b, b_hat, c,
-                                   y, err, dy, w, v, &err_max);
+                                   iz_b, iz_b_hat, y, err, dy, w, v, &err_max);
 
     err_max = reduction_max(red, err_max);
 
@@ -129,6 +134,8 @@ void *solver_thread(void *argument)
 
   if (me == 0)
     print_statistics(timer, steps_acc, steps_rej);
+
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE(v);
 
