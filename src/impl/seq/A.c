@@ -61,13 +61,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (l = 1; l < s; l++)
     {
-      block_gather_interm_stage(l, 0, ode_size, A, y, w, v);
+      block_gather_vec_interm_stage(l, 0, ode_size, A, y, w, v);
       block_rhs(l, 0, ode_size, t, h, c, w, v);
     }
 
     /* output approximation */
 
-    block_gather_output(0, ode_size, s, b, b_hat, err, dy, v);
+    block_gather_vec_output(0, ode_size, s, b, b_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = 0; j < ode_size; j++)

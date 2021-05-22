@@ -80,7 +80,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     for (l = 1; l < s; l++)
     {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
+      block_gather_vec_interm_stage(l, first_elem, num_elems, A, y, w, v);
 
       MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE,
                      gathered_w, elem_length, elem_offset, MPI_DOUBLE,
@@ -91,7 +91,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     /* output approximation */
 
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    block_gather_vec_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
 
     my_err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)

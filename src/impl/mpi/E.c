@@ -76,40 +76,22 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                    gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                    MPI_COMM_WORLD);
 
-    for (j = first_elem; j <= last_elem; j++)
-      v[0][j] = h * ode_eval_comp(j, t + c[0] * h, gathered_w);
+    block_rhs(0, first_elem, num_elems, t, h, c, gathered_w, v);
 
     for (l = 1; l < s; l++)
     {
-      for (j = first_elem; j <= last_elem; j++)
-      {
-        w[j] = y[j] + A[l][0] * v[0][j];
-
-        for (i = 1; i < l; i++)
-          w[j] += A[l][i] * v[i][j];
-      }
+      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
 
       MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE,
                      gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                      MPI_COMM_WORLD);
 
-      for (j = first_elem; j <= last_elem; j++)
-        v[l][j] = h * ode_eval_comp(j, t + c[l] * h, gathered_w);
+      block_rhs(l, first_elem, num_elems, t, h, c, gathered_w, v);
     }
 
     /* output approximation */
 
-    for (j = first_elem; j <= last_elem; j++)
-    {
-      err[j] = b_hat[0] * v[0][j];
-      dy[j] = b[0] * v[0][j];
-
-      for (i = 1; i < s; i++)
-      {
-        err[j] += b_hat[i] * v[i][j];
-        dy[j] += b[i] * v[i][j];
-      }
-    }
+    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
 
     my_err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)

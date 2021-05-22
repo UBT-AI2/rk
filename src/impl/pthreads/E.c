@@ -52,7 +52,7 @@ void *solver_thread(void *argument)
   double **v, *w, *y, *y0, *y_old, *err, *dy;
   double **A, *b, *b_hat, *c;
   double timer, err_max, h, t, tol, t0, te;
-  int i, j, l, s, ord, first_elem, last_elem, num_elems, me;
+  int j, l, s, ord, first_elem, last_elem, num_elems, me;
   int steps_acc = 0, steps_rej = 0;
   barrier_t *bar;
   reduction_t *red;
@@ -98,38 +98,17 @@ void *solver_thread(void *argument)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
-    for (j = first_elem; j <= last_elem; j++)
-      v[0][j] = h * ode_eval_comp(j, t + c[0] * h, y);
+    block_rhs(0, first_elem, num_elems, t, h, c, y, v);
 
     for (l = 1; l < s; l++)
     {
-      for (j = first_elem; j <= last_elem; j++)
-      {
-        w[j] = y[j] + A[l][0] * v[0][j];
-
-        for (i = 1; i < l; i++)
-          w[j] += A[l][i] * v[i][j];
-      }
-
+      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
       barrier_wait(bar);
-
-      for (j = first_elem; j <= last_elem; j++)
-        v[l][j] = h * ode_eval_comp(j, t + c[l] * h, w);
-
+      block_rhs(l, first_elem, num_elems, t, h, c, w, v);
       barrier_wait(bar);
     }
 
-    for (j = first_elem; j <= last_elem; j++)
-    {
-      err[j] = b_hat[0] * v[0][j];
-      dy[j] = b[0] * v[0][j];
-
-      for (i = 1; i < s; i++)
-      {
-        err[j] += b_hat[i] * v[i][j];
-        dy[j] += b[i] * v[i][j];
-      }
-    }
+    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)

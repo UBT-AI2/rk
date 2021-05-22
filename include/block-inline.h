@@ -45,6 +45,44 @@ static inline void block_gather_interm_stage(int l, int first, int size,
   int i, j;
 
   for (j = first; j < first + size; j++)
+  {
+    w[j] = y[j];
+
+    for (i = 0; i < l; i++)
+      w[j] += A[l][i] * v[i][j];
+  }
+}
+
+/******************************************************************************/
+
+static inline void block_gather_output(int first, int size, int s,
+                                       double *b, double *b_hat,
+                                       double *err, double *dy, double **v)
+{
+  int i, j;
+
+  for (j = first; j < first + size; j++)
+  {
+    err[j] = b_hat[0] * v[0][j];
+    dy[j] = b[0] * v[0][j];
+
+    for (i = 1; i < s; i++)
+    {
+      err[j] += b_hat[i] * v[i][j];
+      dy[j] += b[i] * v[i][j];
+    }
+  }
+}
+
+/******************************************************************************/
+
+static inline void block_gather_vec_interm_stage(int l, int first, int size,
+                                                 double **A, double *y,
+                                                 double *w, double **v)
+{
+  int i, j;
+
+  for (j = first; j < first + size; j++)
     w[j] = y[j] + A[l][0] * v[0][j];
 
   for (i = 1; i < l; i++)
@@ -54,9 +92,9 @@ static inline void block_gather_interm_stage(int l, int first, int size,
 
 /******************************************************************************/
 
-static inline void block_gather_output(int first, int size, int s,
-                                       double *b, double *b_hat,
-                                       double *err, double *dy, double **v)
+static inline void block_gather_vec_output(int first, int size, int s,
+                                           double *b, double *b_hat,
+                                           double *err, double *dy, double **v)
 {
   int i, j;
 

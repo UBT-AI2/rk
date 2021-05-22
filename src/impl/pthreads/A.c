@@ -102,13 +102,13 @@ void *solver_thread(void *argument)
 
     for (l = 1; l < s; l++)
     {
-      block_gather_interm_stage(l, first_elem, num_elems, A, y, w, v);
+      block_gather_vec_interm_stage(l, first_elem, num_elems, A, y, w, v);
       barrier_wait(bar);
       block_rhs(l, first_elem, num_elems, t, h, c, w, v);
       barrier_wait(bar);
     }
 
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    block_gather_vec_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)
