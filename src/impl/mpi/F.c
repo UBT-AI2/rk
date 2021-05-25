@@ -25,6 +25,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   int i, j, l;
   double **v, *w, *y_old, *err, *dy, *gathered_w;
   double **A, *b, *b_hat, *c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max, my_err_max;
   int s, ord;
   double h, t;
@@ -45,6 +46,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; i++)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   ALLOC2D(v, s, ode_size, double);
 
@@ -71,13 +74,15 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     /* stages */
 
     MPI_Allgatherv(y + first_elem, num_elems, MPI_DOUBLE,
                    gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                    MPI_COMM_WORLD);
 
-    block_rhs_gather_interm_stage(0, first_elem, num_elems, t, h, A, c,
+    block_rhs_gather_interm_stage(0, first_elem, num_elems, t, h, hA, hc,
                                   y, gathered_w, w, v);
 
     for (l = 1; l < s - 1; l++)
@@ -86,19 +91,19 @@ void solver(double t0, double te, double *y0, double *y, double tol)
                      gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                      MPI_COMM_WORLD);
 
-      block_rhs_gather_interm_stage(l, first_elem, num_elems, t, h, A,
-                                    c, y, gathered_w, w, v);
+      block_rhs_gather_interm_stage(l, first_elem, num_elems, t, h, hA,
+                                    hc, y, gathered_w, w, v);
     }
 
     MPI_Allgatherv(w + first_elem, num_elems, MPI_DOUBLE,
                    gathered_w, elem_length, elem_offset, MPI_DOUBLE,
                    MPI_COMM_WORLD);
 
-    block_rhs(l, first_elem, num_elems, t, h, c, gathered_w, v);
+    block_rhs(l, first_elem, num_elems, t, h, hc, gathered_w, v);
 
     /* output approximation */
 
-    block_gather_output(first_elem, num_elems, s, b, b_hat, err, dy, v);
+    block_gather_output(first_elem, num_elems, s, hb, hb_hat, err, dy, v);
 
     my_err_max = 0.0;
     for (j = first_elem; j <= last_elem; j++)
@@ -126,6 +131,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
               y, elem_length, elem_offset, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   FREE2D(v);
   FREE(dy);

@@ -26,6 +26,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   double **v, *y_old, *err, *w_cur, *w_next, *dy;
   double **A, *b, *b_hat, *c;
+  double **hA, *hb, *hb_hat, *hc;
   double err_max;
   int s, ord;
   double h, t;
@@ -40,6 +41,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   for (i = 0; i < s; ++i)
     b_hat[i] = b[i] - b_hat[i];
+
+  alloc_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   ALLOC2D(v, s, ode_size, double);
 
@@ -57,22 +60,25 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   FOR_ALL_GRIDPOINTS(t0, te, h, steps_acc, steps_rej)
   {
+    premult(h, A, b, b_hat, c, hA, hb, hb_hat, hc, s);
+
     /* stages */
 
-    block_rhs_gather_interm_stage(0, 0, ode_size, t, h, A, c, y, y, w_next, v);
+    block_rhs_gather_interm_stage(0, 0, ode_size, t, h, hA, hc, y, y, w_next,
+                                  v);
 
     for (l = 1; l < s - 1; l++)
     {
       swap_vectors(&w_cur, &w_next);
-      block_rhs_gather_interm_stage(l, 0, ode_size, t, h, A, c, y,
+      block_rhs_gather_interm_stage(l, 0, ode_size, t, h, hA, hc, y,
                                     w_cur, w_next, v);
     }
 
-    block_rhs(l, 0, ode_size, t, h, c, w_next, v);
+    block_rhs(l, 0, ode_size, t, h, hc, w_next, v);
 
     /* output approximation */
 
-    block_gather_output(0, ode_size, s, b, b_hat, err, dy, v);
+    block_gather_output(0, ode_size, s, hb, hb_hat, err, dy, v);
 
     err_max = 0.0;
     for (j = 0; j < ode_size; j++)
@@ -92,6 +98,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   timer_stop(&timer);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_emb_rk_method(&hA, &hb, &hb_hat, &hc, s);
 
   FREE2D(v);
   FREE(dy);

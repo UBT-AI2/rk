@@ -164,8 +164,8 @@ static inline void tiled_block_gather_interm_stage(int l, int first, int size,
 
 static inline void block_rhs_gather_interm_stage(int l, int first,
                                                  int size, double t,
-                                                 double h, double **A,
-                                                 double *c, double *y,
+                                                 double h, double **hA,
+                                                 double *hc, double *y,
                                                  double *w_l,
                                                  double *w_lp1, double **v)
 {
@@ -173,11 +173,11 @@ static inline void block_rhs_gather_interm_stage(int l, int first,
 
   for (j = first; j < first + size; j++)
   {
-    v[l][j] = h * ode_eval_comp(j, t + c[l] * h, w_l);
+    v[l][j] = ode_eval_comp(j, t + hc[l], w_l);
 
     w_lp1[j] = y[j];
     for (i = 0; i < l + 1; i++)
-      w_lp1[j] += A[l + 1][i] * v[i][j];
+      w_lp1[j] += hA[l + 1][i] * v[i][j];
   }
 }
 
@@ -186,8 +186,8 @@ static inline void block_rhs_gather_interm_stage(int l, int first,
 static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
                                                        int size, double t,
                                                        double h,
-                                                       double **A, int **iz_A,
-                                                       double *c,
+                                                       double **hA, int **iz_A,
+                                                       double *hc,
                                                        double *y,
                                                        double *w_l,
                                                        double *w_lp1,
@@ -199,13 +199,11 @@ static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
   {
     int count = imin(BLOCKSIZE, first + size - j);
 
-    ode_eval_rng(j, j + count - 1, t + c[l] * h, w_l, v[l]);
-    for (jj = 0; jj < count; jj++)
-      v[l][j + jj] *= h;
+    ode_eval_rng(j, j + count - 1, t + hc[l], w_l, v[l]);
 
     if (iz_A[l + 1][0])
       for (jj = 0; jj < count; jj++)
-        w_lp1[j + jj] = y[j + jj] + A[l + 1][0] * v[0][j + jj];
+        w_lp1[j + jj] = y[j + jj] + hA[l + 1][0] * v[0][j + jj];
     else
       for (jj = 0; jj < count; jj++)
         w_lp1[j + jj] = y[j + jj];
@@ -213,7 +211,7 @@ static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
     for (i = 1; i < l + 1; i++)
       if (iz_A[l + 1][i])
         for (jj = 0; jj < count; jj++)
-          w_lp1[j + jj] += A[l + 1][i] * v[i][j + jj];
+          w_lp1[j + jj] += hA[l + 1][i] * v[i][j + jj];
   }
 }
 
