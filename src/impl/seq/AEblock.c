@@ -71,7 +71,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     for (l = 1; l < s; l++)
     {
       tiled_block_gather_interm_stage(l, 0, ode_size, hA, iz_A, y, w, v);
-      block_rhs(l, 0, ode_size, t, h, c, w, v);
+      block_rhs(l, 0, ode_size, t, h, hc, w, v);
     }
 
     /* output approximation */
