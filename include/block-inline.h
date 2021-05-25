@@ -136,6 +136,57 @@ static inline void tiled_block_gather_interm_stage(int l, int first, int size,
 
 /******************************************************************************/
 
+static inline void block_rhs_gather_interm_stage(int l, int first,
+                                                 int size, double t,
+                                                 double h, double **A,
+                                                 double *c, double *y,
+                                                 double *w_l,
+                                                 double *w_lp1, double **v)
+{
+  int i, j;
+
+  for (j = first; j < first + size; j++)
+  {
+    v[l][j] = h * ode_eval_comp(j, t + c[l] * h, w_l);
+
+    w_lp1[j] = y[j];
+    for (i = 0; i < l + 1; i++)
+      w_lp1[j] += A[l + 1][i] * v[i][j];
+  }
+}
+
+/******************************************************************************/
+
+static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
+                                                       int size, double t,
+                                                       double h,
+                                                       double **A,
+                                                       double *c,
+                                                       double *y,
+                                                       double *w_l,
+                                                       double *w_lp1,
+                                                       double **v)
+{
+  int i, j, jj;
+
+  for (j = first; j < first + size; j += BLOCKSIZE)
+  {
+    int count = imin(BLOCKSIZE, first + size - j);
+
+    for (jj = 0; jj < count; jj++)
+      v[l][j + jj] = h * ode_eval_comp(j + jj, t + c[l] * h, w_l);
+
+    for (jj = 0; jj < count; jj++)
+      w_lp1[j + jj] = y[j + jj] + A[l + 1][0] * v[0][j + jj];
+
+    for (i = 1; i < l + 1; i++)
+      for (jj = 0; jj < count; jj++)
+        w_lp1[j + jj] += A[l + 1][i] * v[i][j + jj];
+  }
+}
+
+/******************************************************************************/
+
 static inline void tiled_block_gather_output(int first, int size, int s,
                                              double *b, double *b_hat,
                                              double *err, double *dy,

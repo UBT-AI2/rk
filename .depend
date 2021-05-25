@@ -6,6 +6,14 @@ src/impl/seq/PipeD.o: src/impl/seq/PipeD.c include/solver.h include/config.h \
  include/ode.h include/methods.h include/tools.h include/threads.h \
  include/block-inline.h
 
+src/impl/seq/F.o: src/impl/seq/F.c include/solver.h include/config.h include/ode.h \
+ include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
+src/impl/seq/Fblock.o: src/impl/seq/Fblock.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
 src/impl/seq/E.o: src/impl/seq/E.c include/solver.h include/config.h include/ode.h \
  include/methods.h include/tools.h include/threads.h \
  include/block-inline.h
@@ -40,6 +48,14 @@ src/impl/pthreads/PipeD4.o: src/impl/pthreads/PipeD4.c include/solver.h include/
  include/block-inline.h
 
 src/impl/pthreads/PipeD2.o: src/impl/pthreads/PipeD2.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
+src/impl/pthreads/F.o: src/impl/pthreads/F.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
+src/impl/pthreads/Fblock.o: src/impl/pthreads/Fblock.c include/solver.h include/config.h \
  include/ode.h include/methods.h include/tools.h include/threads.h \
  include/block-inline.h
 
@@ -89,6 +105,14 @@ src/impl/mpi/PipeD4.o: src/impl/mpi/PipeD4.c include/solver.h include/config.h \
  include/block-inline.h
 
 src/impl/mpi/PipeD2.o: src/impl/mpi/PipeD2.c include/solver.h include/config.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
+src/impl/mpi/F.o: src/impl/mpi/F.c include/solver.h include/config.h include/ode.h \
+ include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
+src/impl/mpi/Fblock.o: src/impl/mpi/Fblock.c include/solver.h include/config.h \
  include/ode.h include/methods.h include/tools.h include/threads.h \
  include/block-inline.h
 
@@ -148,6 +172,12 @@ bin/seq_bruss2d-mix_PipeDls: src/tools.o src/threads.o src/methods.o src/main.o 
 bin/seq_bruss2d-mix_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/PipeD.o src/problems/bruss2d-mix.o
 
+bin/seq_bruss2d-mix_F: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/F.o src/problems/bruss2d-mix.o
+
+bin/seq_bruss2d-mix_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/Fblock.o src/problems/bruss2d-mix.o
+
 bin/seq_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/E.o src/problems/bruss2d-mix.o
 
@@ -174,6 +204,12 @@ bin/pthreads_bruss2d-mix_PipeD4: src/tools.o src/threads.o src/methods.o src/mai
 
 bin/pthreads_bruss2d-mix_PipeD2: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/PipeD2.o src/problems/bruss2d-mix.o
+
+bin/pthreads_bruss2d-mix_F: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/F.o src/problems/bruss2d-mix.o
+
+bin/pthreads_bruss2d-mix_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Fblock.o src/problems/bruss2d-mix.o
 
 bin/pthreads_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/E.o src/problems/bruss2d-mix.o
@@ -210,6 +246,12 @@ bin/mpi_bruss2d-mix_PipeD4: src/tools.o src/threads.o src/methods.o src/main.o \
 
 bin/mpi_bruss2d-mix_PipeD2: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/PipeD2.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_F: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/F.o src/problems/bruss2d-mix.o
+
+bin/mpi_bruss2d-mix_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Fblock.o src/problems/bruss2d-mix.o
 
 bin/mpi_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/E.o src/problems/bruss2d-mix.o
