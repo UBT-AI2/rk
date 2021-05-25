@@ -17,6 +17,8 @@
 ################################################################################
 
 HAVE_MPI        = yes
+CC		= gcc
+MPICC 		= mpicc
 
 ################################################################################
 
@@ -41,13 +43,14 @@ CORES           = 4
 
 CFLAGS  = -I$(INCDIR) -D_REENTRANT -Wall -O3 -g -D_GNU_SOURCE
 ifeq "$(HAVE_MPI)" "yes"
-CC      = mpicc
 CFLAGS += -DHAVE_MPI
 else
-CC      = gcc
+MPICC = $(CC)
 endif
 LDFLAGS = -lpthread -lm
-MAKEDEP = $(CC) $(CFLAGS) -MM -MG
+MAKEDEP = $(MPICC) $(CFLAGS) -MM -MG
+
+CFLAGS += $(patsubst %,-D%, $(DEFINES))
 
 ################################################################################
 
@@ -100,12 +103,12 @@ $(PREFIX_MPI):	$(MPI_TARGETS)
 ################################################################################
 
 $(ALL_TARGETS):
-		$(CC) $(CFLAGS) -o $@ $(filter %.o,$^) $(LDFLAGS)
+		$(MPICC) $(CFLAGS) -o $@ $(filter %.o,$^) $(LDFLAGS)
 
 ################################################################################
 
 %.o:		%.c
-		$(CC) $(CFLAGS) -o $@ -c $<
+		$(MPICC) $(CFLAGS) -o $@ -c $<
 
 ################################################################################
 
