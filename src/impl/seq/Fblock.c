@@ -26,6 +26,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
   double **v, *y_old, *err, *w_cur, *w_next, *dy;
   double **A, *b, *b_hat, *c;
+  int **iz_A, *iz_b, *iz_b_hat, *iz_c;
   double err_max;
   int s, ord;
   double h, t;
@@ -49,6 +50,9 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   w_cur = err;
   w_next = y_old = dy;
 
+  alloc_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
+  zero_pattern(A, b, b_hat, c, iz_A, iz_b, iz_b_hat, iz_c, s);
+
   h = initial_stepsize(t0, te - t0, y0, ord, tol);
 
   copy_vector(y, y0, ode_size);
@@ -59,13 +63,13 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   {
     /* stages */
 
-    tiled_block_rhs_gather_interm_stage(0, 0, ode_size, t, h, A, c, y, y,
+    tiled_block_rhs_gather_interm_stage(0, 0, ode_size, t, h, A, iz_A, c, y, y,
                                         w_next, v);
 
     for (l = 1; l < s - 1; l++)
     {
       swap_vectors(&w_cur, &w_next);
-      tiled_block_rhs_gather_interm_stage(l, 0, ode_size, t, h, A, c, y,
+      tiled_block_rhs_gather_interm_stage(l, 0, ode_size, t, h, A, iz_A, c, y,
                                           w_cur, w_next, v);
     }
 
@@ -73,7 +77,8 @@ void solver(double t0, double te, double *y0, double *y, double tol)
 
     /* output approximation */
 
-    tiled_block_gather_output(0, ode_size, s, b, b_hat, err, dy, v);
+    tiled_block_gather_output(0, ode_size, s, b, b_hat, iz_b, iz_b_hat, err, dy,
+                              v);
 
     err_max = 0.0;
     for (j = 0; j < ode_size; j++)
@@ -93,6 +98,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
   timer_stop(&timer);
 
   free_emb_rk_method(&A, &b, &b_hat, &c, s);
+  free_zero_pattern(&iz_A, &iz_b, &iz_b_hat, &iz_c, s);
 
   FREE2D(v);
   FREE(dy);

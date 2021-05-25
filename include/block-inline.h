@@ -191,7 +191,7 @@ static inline void block_rhs_gather_interm_stage(int l, int first,
 static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
                                                        int size, double t,
                                                        double h,
-                                                       double **A,
+                                                       double **A, int **iz_A,
                                                        double *c,
                                                        double *y,
                                                        double *w_l,
@@ -208,12 +208,17 @@ static inline void tiled_block_rhs_gather_interm_stage(int l, int first,
     for (jj = 0; jj < count; jj++)
       v[l][j + jj] *= h;
 
-    for (jj = 0; jj < count; jj++)
-      w_lp1[j + jj] = y[j + jj] + A[l + 1][0] * v[0][j + jj];
+    if (iz_A[l + 1][0])
+      for (jj = 0; jj < count; jj++)
+        w_lp1[j + jj] = y[j + jj] + A[l + 1][0] * v[0][j + jj];
+    else
+      for (jj = 0; jj < count; jj++)
+        w_lp1[j + jj] = y[j + jj];
 
     for (i = 1; i < l + 1; i++)
-      for (jj = 0; jj < count; jj++)
-        w_lp1[j + jj] += A[l + 1][i] * v[i][j + jj];
+      if (iz_A[l + 1][i])
+        for (jj = 0; jj < count; jj++)
+          w_lp1[j + jj] += A[l + 1][i] * v[i][j + jj];
   }
 }
 
