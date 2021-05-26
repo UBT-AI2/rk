@@ -1,0 +1,82 @@
+#!/bin/bash
+################################################################################
+# This file is part of a collection of embedded Runge-Kutta solvers.           #
+# Copyright (C) 2009-2021, Matthias Korch, University of Bayreuth, Germany.    #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify         #
+# it under the terms of the GNU General Public License as published by         #
+# the Free Software Foundation, either version 3 of the License, or            #
+# (at your option) any later version.                                          #
+#                                                                              #
+# This program is distributed in the hope that it will be useful,              #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of               #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
+# GNU General Public License for more details.                                 #
+#                                                                              #
+# You should have received a copy of the GNU General Public License            #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.       #
+################################################################################
+
+# This file demonstrates how you can run a benchmark series. Of course, to
+# observe relevant cache effects, you need to consider larger problem sizes
+# that are a challenge for the cache.
+#
+# After using this script to run the benchmarks and produce a log file like
+# this
+#
+#  ./benchmark example.log
+#
+# You can produce a table for later postprocessing and plotting by
+#
+#   ./log2tab --head < example.log > example.csv
+
+LOGFILE="$1"
+
+if [ -z "$LOGFILE" ] ; then
+    echo "Usage: $(basename $0) <logfile>"
+    exit 1
+fi
+
+METHODS="RKF23 DOPRI54"
+N="$(seq 50 50 200)"
+CORES="$(seq 1 2)"
+
+PROBDIR="src/problems"
+SEQDIR="src/impl/seq"
+PTHDIR="src/impl/pthreads"
+MPIDIR="src/impl/mpi"
+
+function objlist()
+{
+    for f in $1/*.c ; do
+        echo $(basename $f .c)
+    done
+}
+
+PROBLEMS=$(objlist $PROBDIR)
+IMPL_SEQ=$(objlist $SEQDIR)
+IMPL_PTH=$(objlist $PTHDIR)
+IMPL_MPI=$(objlist $MPIDIR)
+
+for m in $METHODS ; do
+    for n in $N ; do
+
+        make clean
+        make DEFINES="METHOD=$m BRUSS_GRID_SIZE=$n"
+
+        for p in $PROBLEMS ; do
+            for i in $IMPL_SEQ ; do
+                ./bin/seq_${p}_${i} | tee -a "$LOGFILE"
+            done
+            for c in $CORES ; do
+                for i in $IMPL_PTH ; do
+                    NUM_THREADS=$c ./bin/pthreads_${p}_${i} | tee -a "$LOGFILE"
+                done
+                for i in $IMPL_MPI ; do
+                    mpirun -np $c ./bin/mpi_${p}_${i} | tee -a "$LOGFILE"
+                done
+            done
+        done
+
+    done
+done

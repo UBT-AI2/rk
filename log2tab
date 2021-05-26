@@ -1,0 +1,244 @@
+#!/usr/bin/perl
+################################################################################
+# This file is part of a collection of embedded Runge-Kutta solvers.           #
+# Copyright (C) 2009-2021, Matthias Korch, University of Bayreuth, Germany.    #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify         #
+# it under the terms of the GNU General Public License as published by         #
+# the Free Software Foundation, either version 3 of the License, or            #
+# (at your option) any later version.                                          #
+#                                                                              #
+# This program is distributed in the hope that it will be useful,              #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of               #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
+# GNU General Public License for more details.                                 #
+#                                                                              #
+# You should have received a copy of the GNU General Public License            #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.       #
+################################################################################
+
+use strict;
+use warnings;
+
+use File::Basename;
+use Getopt::Long;
+
+my $want_head = 0;
+my $want_pmd = 0;
+my $want_help = 0;
+my $sep = ',';
+
+GetOptions(
+	   'separator=s' => \$sep,
+	   'head' => \$want_head,
+	   'pmd' => sub { $want_pmd = 1; $sep = "\t"; },
+	   'help|?' => \$want_help,
+	  );
+
+if ($want_help)
+{
+  print STDERR "Usage: ", basename($0), " [--head] [< logfile] [> tabfile]\n";
+  exit(1);
+}
+
+my @cols = qw( problem n alpha t0 te iv_0 iv_nm1 iv_min iv_max tol lock pad
+	       partype impl cores method ord s steps accepted rejected
+	       kt tps tpcs tt res_0 res_nm1 res_min res_max );
+
+my $p_int = '\d+';
+my $p_float = '\d+\.\d+e[+-]\d+';
+my $p_word = '\S+';
+
+my $state = 0;
+my $linenumber = 0;
+my $parallel;
+my $ode;
+my $n;
+my $tps;
+
+if ($want_head)
+{
+  if ($want_pmd)
+  {
+    print "# cols=", scalar @cols, "\n";
+    print "# ", join($sep, @cols);
+  }
+  else
+  {
+    print join($sep, @cols);
+  }
+}
+
+while (<STDIN>)
+{
+  $linenumber++;
+
+  if ($state == 0)
+  {
+    if (/^ODE: ($p_word)/)
+    {
+      $ode = $1;
+      print "$ode$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 1)
+  {
+    if ($ode eq "BRUSS2D-MIX")
+    {
+      if (/^Grid size: ($p_int)/)
+      {
+	$n = 2*$1*$1;
+	print "$n$sep";
+	$state++;
+      }
+    }
+    else
+    {
+      if (/^(Problem|System) size: ($p_int)/)
+      {
+	print "$1$sep";
+	$state++;
+      }
+    }
+  }
+  elsif ($state == 2)
+  {
+    if (/^Alpha: ($p_float)/)
+    {
+      print "$1$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 3)
+  {
+    if (/^Integration interval: \[($p_float),($p_float)\]/)
+    {
+      print "$1$sep$2$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 4)
+  {
+    if (/^Initial value: y0\[0\] = ($p_float), \.\.\., y0\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
+    {
+      print "$1$sep$2$sep$3$sep$4$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 5)
+  {
+    if (/^Tolerance: ($p_float)/)
+    {
+      print "$1$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 6)
+  {
+    if (/^Lock type: ($p_word)/)
+    {
+      print "$1$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 7)
+  {
+    if (/^Pad size: ($p_int)/)
+    {
+      print "$1$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 8)
+  {
+    if (/^Solver type: ($p_word) embedded Runge-Kutta method( for ($p_word) address space)?/)
+    {
+      if ("$1" eq "parallel")
+      {
+	$parallel = 1;
+	if ("$3" eq "shared")
+	{
+	  print "pth$sep";
+	}
+	else
+	{
+	  print "mpi$sep";
+	}
+      }
+      else
+      {
+	$parallel = 0;
+	print "seq$sep";
+      }
+      $state++;
+    }
+  }
+  elsif ($state == 9)
+  {
+    if (/^Implementation variant: ($p_word)/)
+    {
+      print "$1$sep";
+      if ($parallel)
+      {
+	$state++;
+      }
+      else
+      {
+	print "1$sep";
+	$state += 2;
+      }
+    }
+  }
+  elsif ($state == 10)
+  {
+    if (/^Number of (threads|MPI processes): ($p_int)/)
+    {
+      print "$2$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 11)
+  {
+    if (/^Method: (\S+) (\d)\((\d)\) \(order ($p_int), ($p_int) stages\)/)
+    {
+      my $m = lc($1) . $2 . $3;
+      print "$m$sep$4$sep$5$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 12)
+  {
+    if (/^Number of steps: ($p_int) \(($p_int) accepted, ($p_int) rejected\)/)
+    {
+      print "$1$sep$2$sep$3$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 13)
+  {
+    if (/^Kernel time: ($p_float) s \(($p_float) s per step\)/)
+    {
+      $tps = $2;
+      my $tpcs = $2 / $n;
+      print "$1$sep$tps$sep$tpcs$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 14)
+  {
+    if (/^Total time:\s+($p_float) s/)
+    {
+      print "$1$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 15)
+  {
+    if (/^Result: y\[0\] = ($p_float), \.\.\., y\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
+    {
+      print "$1$sep$2$sep$3$sep$4\n";
+      $state = 0;
+    }
+  }
+}
