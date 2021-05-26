@@ -52,7 +52,7 @@
  */
 
 #ifndef TOL
-#define TOL                     1E-3
+#define TOL                     1E-9
 #endif
 
 /*
