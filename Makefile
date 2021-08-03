@@ -77,12 +77,12 @@ IMPL_SEQ         = $(patsubst $(SEQDIR)/%.c, %, $(IMPL_SOURCES_SEQ))
 IMPL_PTH         = $(patsubst $(PTHDIR)/%.c, %, $(IMPL_SOURCES_PTH))
 IMPL_MPI         = $(patsubst $(MPIDIR)/%.c, %, $(IMPL_SOURCES_MPI))
 
-SEQ_TARGETS      = $(foreach i, $(IMPL_SEQ), \
-			$(foreach p, $(PROBLEMS), $(BINDIR)/$(PREFIX_SEQ)_$(p)_$(i)))
-PTH_TARGETS      = $(foreach i, $(IMPL_PTH), \
-			$(foreach p, $(PROBLEMS), $(BINDIR)/$(PREFIX_PTH)_$(p)_$(i)))
-MPI_TARGETS      = $(foreach i, $(IMPL_MPI), \
-			$(foreach p, $(PROBLEMS), $(BINDIR)/$(PREFIX_MPI)_$(p)_$(i)))
+SEQ_TARGETS      = $(foreach p, $(PROBLEMS), \
+			$(foreach i, $(IMPL_SEQ), $(BINDIR)/$(PREFIX_SEQ)_$(p)_$(i)))
+PTH_TARGETS      = $(foreach p, $(PROBLEMS), \
+			$(foreach i, $(IMPL_PTH), $(BINDIR)/$(PREFIX_PTH)_$(p)_$(i)))
+MPI_TARGETS      = $(foreach p, $(PROBLEMS), \
+			$(foreach i, $(IMPL_MPI), $(BINDIR)/$(PREFIX_MPI)_$(p)_$(i)))
 
 ALL_TARGETS      = $(SEQ_TARGETS) $(PTH_TARGETS) $(MPI_TARGETS)
 
@@ -151,36 +151,46 @@ done >> $(DEPFILE)
 
 .PHONY:	check
 check:	all
-	for P in $(SEQ_TARGETS); do \
-  printf "%35s\t" ./$$P ; \
-  ./$$P | grep "Result" ; \
-done ; \
-for P in $(PTH_TARGETS); do \
-  printf "%35s\t" ./$$P ; \
-  NUM_THREADS=$(CORES) ./$$P | grep "Result" ; \
-done ; \
-for P in $(MPI_TARGETS); do \
-  printf "%35s\t" ./$$P ; \
-  mpirun -n $(CORES) ./$$P | grep "Result" ; \
+	for p in $(PROBLEMS); do \
+  for i in $(IMPL_SEQ); do \
+    P=bin/$(PREFIX_SEQ)_$${p}_$${i} ; \
+    printf "%35s\t" ./$$P ; \
+    ./$$P | grep "Result" ; \
+  done ; \
+  for i in $(IMPL_PTH); do \
+    P=bin/$(PREFIX_PTH)_$${p}_$${i} ; \
+    printf "%35s\t" ./$$P ; \
+    NUM_THREADS=$(CORES) ./$$P | grep "Result" ; \
+  done ; \
+  for i in $(IMPL_MPI); do \
+    P=bin/$(PREFIX_MPI)_$${p}_$${i} ; \
+    printf "%35s\t" ./$$P ; \
+    mpirun -n $(CORES) ./$$P | grep "Result" ; \
+  done ; \
+  echo ; \
 done
 
 ################################################################################
 
 .PHONY:	time
 time:	all
-	for P in $(SEQ_TARGETS); do \
-  printf "%35s\t" ./$$P ; \
-  ./$$P | grep "Kernel time" ; \
-done ; \
-echo ; \
-for P in $(PTH_TARGETS); do \
-  printf "%35s\t" ./$$P ; \
-  NUM_THREADS=$(CORES) ./$$P | grep "Kernel time" ; \
-done ; \
-echo ; \
-for P in $(MPI_TARGETS); do \
-  printf "%35s\t" ./$$P ; \
-  mpirun -n $(CORES) ./$$P | grep "Kernel time" ; \
+	for p in $(PROBLEMS); do \
+  for i in $(IMPL_SEQ); do \
+    P=bin/$(PREFIX_SEQ)_$${p}_$${i} ; \
+    printf "%35s\t" ./$$P ; \
+    ./$$P | grep "Kernel time" ; \
+  done ; \
+  for i in $(IMPL_PTH); do \
+    P=bin/$(PREFIX_PTH)_$${p}_$${i} ; \
+    printf "%35s\t" ./$$P ; \
+    NUM_THREADS=$(CORES) ./$$P | grep "Kernel time" ; \
+  done ; \
+  for i in $(IMPL_MPI); do \
+    P=bin/$(PREFIX_MPI)_$${p}_$${i} ; \
+    printf "%35s\t" ./$$P ; \
+    mpirun -n $(CORES) ./$$P | grep "Kernel time" ; \
+  done ; \
+  echo ; \
 done
 
 ################################################################################
