@@ -36,6 +36,14 @@
 #endif
 
 /*
+ * Parameters of the Lotka-Volterra equations
+ */
+
+#ifndef LV_COUNT
+#define LV_COUNT                10000
+#endif
+
+/*
  * Integration interval
  */
 
@@ -77,11 +85,11 @@
 
 /*
  * Blocksize to be used by the pipelining implementations. Must be
- * larger than or equal to 2 * BRUSS_GRID_SIZE.
+ * larger than or equal the access distance of the ODE system.
  */
 
 #ifndef BLOCKSIZE
-#define BLOCKSIZE               (2 * (BRUSS_GRID_SIZE))
+#define BLOCKSIZE               ode_acc_dist()
 #endif
 
 /*

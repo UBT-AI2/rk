@@ -90,15 +90,16 @@ while (<STDIN>)
       {
 	$n = 2*$1*$1;
 	print "$n$sep";
-	$state++;
+	$state = 2;
       }
     }
     else
     {
       if (/^(Problem|System) size: ($p_int)/)
       {
-	print "$1$sep";
-	$state++;
+	$n = $2;
+	print "$n${sep}0.0${sep}";
+	$state = 3;
       }
     }
   }
@@ -115,7 +116,7 @@ while (<STDIN>)
     if (/^Integration interval: \[($p_float),($p_float)\]/)
     {
       print "$1$sep$2$sep";
-      $state++;
+      $state = 4;
     }
   }
   elsif ($state == 4)

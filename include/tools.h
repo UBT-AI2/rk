@@ -233,6 +233,25 @@ static inline int step_control(double *t, double *h, double err, int ord,
                                double tol, double *y, double *y_old, int n,
                                int *counter_acc, int *counter_rej)
 {
+#ifdef DUMP
+  {
+    int i;
+    FILE *f;
+    
+    if (*counter_acc + *counter_rej == 0)
+      f = fopen("DUMP", "w");
+    else
+      f = fopen("DUMP", "a");
+    
+    fprintf(f, "%.20e\t%.20e", *t, *h);
+    for (i = 0; i < n; i++)
+      fprintf(f, "\t%.20e", y[i]);
+    fprintf(f, "\n");
+
+    fclose(f);
+  }
+#endif
+
   if (err <= tol)               /* accept */
   {
     *t += *h;

@@ -144,6 +144,10 @@ src/impl/mpi/A.o: src/impl/mpi/A.c include/solver.h include/config.h include/ode
  include/methods.h include/tools.h include/threads.h \
  include/block-inline.h
 
+src/problems/lv.o: src/problems/lv.c include/ode.h include/config.h include/solver.h \
+ include/ode.h include/methods.h include/tools.h include/threads.h \
+ include/block-inline.h
+
 src/problems/bruss2d-mix.o: src/problems/bruss2d-mix.c include/ode.h include/config.h \
  include/solver.h include/ode.h include/methods.h include/tools.h \
  include/threads.h \
@@ -166,110 +170,218 @@ src/main.o: src/main.c include/config.h include/ode.h include/config.h \
  include/threads.h \
  include/block-inline.h include/tools.h
 
+bin/seq_lv_PipeDls: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/PipeDls.o src/problems/lv.o
+
 bin/seq_bruss2d-mix_PipeDls: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/PipeDls.o src/problems/bruss2d-mix.o
+
+bin/seq_lv_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/PipeD.o src/problems/lv.o
 
 bin/seq_bruss2d-mix_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/PipeD.o src/problems/bruss2d-mix.o
 
+bin/seq_lv_F: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/F.o src/problems/lv.o
+
 bin/seq_bruss2d-mix_F: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/F.o src/problems/bruss2d-mix.o
+
+bin/seq_lv_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/Fblock.o src/problems/lv.o
 
 bin/seq_bruss2d-mix_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/Fblock.o src/problems/bruss2d-mix.o
 
+bin/seq_lv_E: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/E.o src/problems/lv.o
+
 bin/seq_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/E.o src/problems/bruss2d-mix.o
+
+bin/seq_lv_D: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/D.o src/problems/lv.o
 
 bin/seq_bruss2d-mix_D: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/D.o src/problems/bruss2d-mix.o
 
+bin/seq_lv_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/Dblock.o src/problems/lv.o
+
 bin/seq_bruss2d-mix_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/Dblock.o src/problems/bruss2d-mix.o
+
+bin/seq_lv_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/AEblock.o src/problems/lv.o
 
 bin/seq_bruss2d-mix_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/AEblock.o src/problems/bruss2d-mix.o
 
+bin/seq_lv_A: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/seq/A.o src/problems/lv.o
+
 bin/seq_bruss2d-mix_A: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/seq/A.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/PipeD.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/PipeD.o src/problems/bruss2d-mix.o
 
+bin/pthreads_lv_PipeD4ls: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/PipeD4ls.o src/problems/lv.o
+
 bin/pthreads_bruss2d-mix_PipeD4ls: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/PipeD4ls.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_PipeD4: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/PipeD4.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_PipeD4: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/PipeD4.o src/problems/bruss2d-mix.o
 
+bin/pthreads_lv_PipeD2: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/PipeD2.o src/problems/lv.o
+
 bin/pthreads_bruss2d-mix_PipeD2: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/PipeD2.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_F: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/F.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_F: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/F.o src/problems/bruss2d-mix.o
 
+bin/pthreads_lv_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Fblock.o src/problems/lv.o
+
 bin/pthreads_bruss2d-mix_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/Fblock.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_E: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/E.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/E.o src/problems/bruss2d-mix.o
 
+bin/pthreads_lv_D: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/D.o src/problems/lv.o
+
 bin/pthreads_bruss2d-mix_D: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/D.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Dblock.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/Dblock.o src/problems/bruss2d-mix.o
 
+bin/pthreads_lv_Dbc: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Dbc.o src/problems/lv.o
+
 bin/pthreads_bruss2d-mix_Dbc: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/Dbc.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_Dbcblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/Dbcblock.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_Dbcblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/Dbcblock.o src/problems/bruss2d-mix.o
 
+bin/pthreads_lv_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/AEblock.o src/problems/lv.o
+
 bin/pthreads_bruss2d-mix_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/AEblock.o src/problems/bruss2d-mix.o
+
+bin/pthreads_lv_A: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/pthreads/A.o src/problems/lv.o
 
 bin/pthreads_bruss2d-mix_A: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/pthreads/A.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/PipeD.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_PipeD: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/PipeD.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_PipeD5: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/PipeD5.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_PipeD5: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/PipeD5.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_PipeD4ls: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/PipeD4ls.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_PipeD4ls: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/PipeD4ls.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_PipeD4: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/PipeD4.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_PipeD4: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/PipeD4.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_PipeD2: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/PipeD2.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_PipeD2: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/PipeD2.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_F: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/F.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_F: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/F.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Fblock.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_Fblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/Fblock.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_E: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/E.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_E: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/E.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_D: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/D.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_D: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/D.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Dblock.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_Dblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/Dblock.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_Dbc: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Dbc.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_Dbc: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/Dbc.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_Dbcblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/Dbcblock.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_Dbcblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/Dbcblock.o src/problems/bruss2d-mix.o
 
+bin/mpi_lv_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/AEblock.o src/problems/lv.o
+
 bin/mpi_bruss2d-mix_AEblock: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/AEblock.o src/problems/bruss2d-mix.o
+
+bin/mpi_lv_A: src/tools.o src/threads.o src/methods.o src/main.o \
+  src/impl/mpi/A.o src/problems/lv.o
 
 bin/mpi_bruss2d-mix_A: src/tools.o src/threads.o src/methods.o src/main.o \
   src/impl/mpi/A.o src/problems/bruss2d-mix.o

@@ -24,16 +24,17 @@
 # After using this script to run the benchmarks and produce a log file like
 # this
 #
-#  ./benchmark example.log
+#  ./benchmark bruss2d-mix example.log
 #
 # You can produce a table for later postprocessing and plotting by
 #
 #   ./log2tab --head < example.log > example.csv
 
-LOGFILE="$1"
+PROBLEM="$1"
+LOGFILE="$2"
 
-if [ -z "$LOGFILE" ] ; then
-    echo "Usage: $(basename $0) <logfile>"
+if [ -z "$LOGFILE" ] || [ -z "$PROBLEM" ] ; then
+    echo "Usage: $(basename $0) <logfile> <problem>"
     exit 1
 fi
 
@@ -41,7 +42,6 @@ METHODS="RKF23 DOPRI54"
 N="$(seq 50 50 200)"
 CORES="$(seq 1 2)"
 
-PROBDIR="src/problems"
 SEQDIR="src/impl/seq"
 PTHDIR="src/impl/pthreads"
 MPIDIR="src/impl/mpi"
@@ -53,7 +53,6 @@ function objlist()
     done
 }
 
-PROBLEMS=$(objlist $PROBDIR)
 IMPL_SEQ=$(objlist $SEQDIR)
 IMPL_PTH=$(objlist $PTHDIR)
 IMPL_MPI=$(objlist $MPIDIR)
@@ -62,19 +61,26 @@ for m in $METHODS ; do
     for n in $N ; do
 
         make clean
-        make DEFINES="METHOD=$m BRUSS_GRID_SIZE=$n"
 
-        for p in $PROBLEMS ; do
-            for i in $IMPL_SEQ ; do
-                ./bin/seq_${p}_${i} | tee -a "$LOGFILE"
+	def="METHOD=$m"
+
+	if [ "$PROBLEM" == "bruss2d-mix" ] ; then
+	    def="$def BRUSS_GRID_SIZE=$n"
+	elif  [ "$PROBLEM" == "lv" ] ; then
+	    def="$def LV_COUNT=$n"
+	fi
+	
+        make DEFINES="$def"
+
+        for i in $IMPL_SEQ ; do
+            ./bin/seq_${PROBLEM}_${i} | tee -a "$LOGFILE"
+        done
+        for c in $CORES ; do
+            for i in $IMPL_PTH ; do
+                NUM_THREADS=$c ./bin/pthreads_${PROBLEM}_${i} | tee -a "$LOGFILE"
             done
-            for c in $CORES ; do
-                for i in $IMPL_PTH ; do
-                    NUM_THREADS=$c ./bin/pthreads_${p}_${i} | tee -a "$LOGFILE"
-                done
-                for i in $IMPL_MPI ; do
-                    mpirun -np $c ./bin/mpi_${p}_${i} | tee -a "$LOGFILE"
-                done
+            for i in $IMPL_MPI ; do
+                mpirun -np $c ./bin/mpi_${PROBLEM}_${i} | tee -a "$LOGFILE"
             done
         done
 
