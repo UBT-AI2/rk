@@ -68,22 +68,22 @@ void ode_start(double t, double *y0)
 
 static inline double f0(double y0, double y1)
 {
-  return c0 * y0 - d0 * y0 * y1; // prey
+  return c0 * y0 - d0 * y0 * y1;        // prey
 }
-  
+
 static inline double f1(double y0, double y1)
 {
   return d1 * y0 * y1 - c1 * y1;
 }
-  
+
 /******************************************************************************/
 /* Evaluation of component i                                                  */
 /******************************************************************************/
 
 double ode_eval_comp(int i, double t, const double *y)
 {
-  return (i & 1) ? f1(y[i-1], y[i]) : f0(y[i], y[i+1]);
-  
+  return (i & 1) ? f1(y[i - 1], y[i]) : f0(y[i], y[i + 1]);
+
 }
 
 /******************************************************************************/
@@ -95,28 +95,28 @@ void ode_eval_rng(int i, int j, double t, const double *y, double *f)
   if (j < i)
     return;
 
-  if (i & 1) // i is odd (f1)
+  if (i & 1)                    // i is odd (f1)
   {
     // evaluate f1 at i and move i to next even index
-    f[i] = f1(y[i-1], y[i]);
+    f[i] = f1(y[i - 1], y[i]);
     i++;
   }
 
   while (i < j)
   {
     double y0 = y[i];
-    double y1 = y[i+1];
+    double y1 = y[i + 1];
 
     f[i] = f0(y0, y1);
-    f[i+1] = f1(y0, y1);
+    f[i + 1] = f1(y0, y1);
 
     i += 2;
   }
 
-  if (!(j & 1)) // j is even (f0), so the while loop cannot have reached it
+  if (!(j & 1))                 // j is even (f0), so the while loop cannot have reached it
   {
     // evaluate f0 at j
-    f[j] = f0(y[j], y[j+1]);
+    f[j] = f0(y[j], y[j + 1]);
   }
 }
 
