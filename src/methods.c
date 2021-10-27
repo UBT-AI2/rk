@@ -59,6 +59,167 @@ void premult(double h, double **A, double *b, double *b_hat, double *c,
 
 /******************************************************************************/
 
+void HEUN2(double ***A, double **b, double **b_hat, double **c, int *s,
+           int *ord)
+{
+  /*
+   * Source: H. R. Schwarz, N. Köckler, Numerische Mathematik, 8th ed.,
+   * Vieweg+Teubner 2011, p. 354
+   */
+
+  int i;
+
+  *s = 2;
+  *ord = 2;
+
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Method: HEUN2 (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  }
+#endif
+
+  alloc_emb_rk_method(A, b, b_hat, c, *s);
+
+  (*c)[0] = 0.0;
+  (*c)[1] = 1.0;
+
+  (*b)[0] = 1.0 / 2.0;
+  (*b)[1] = 1.0 / 2.0;
+
+  (*A)[0][0] = 0.0;
+  (*A)[0][1] = 0.0;
+
+  (*A)[1][0] = 1.0;
+  (*A)[1][1] = 0.0;
+
+  /* initialize b_hat to 0 */
+
+  for (i = 0; i < *s; i++)
+    (*b_hat)[i] = 0.0;
+}
+
+/******************************************************************************/
+
+void RK4(double ***A, double **b, double **b_hat, double **c, int *s, int *ord)
+{
+  /*
+   * "The" Runge-Kutta method.
+   *
+   * Source: E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
+   * Equations I -- Nonstiff Problems, 2nd rev. ed., 3rd pr., Springer 2008,
+   * p. 138
+   */
+
+  int i;
+
+  *s = 4;
+  *ord = 4;
+
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Method: RK4 (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  }
+#endif
+
+  alloc_emb_rk_method(A, b, b_hat, c, *s);
+
+  (*c)[0] = 0.0;
+  (*c)[1] = 0.5;
+  (*c)[2] = 0.5;
+  (*c)[3] = 1.0;
+
+  (*b)[0] = 1.0 / 6.0;
+  (*b)[1] = 2.0 / 6.0;
+  (*b)[2] = 2.0 / 6.0;
+  (*b)[3] = 1.0 / 6.0;
+
+  (*A)[0][0] = 0.0;
+  (*A)[0][1] = 0.0;
+  (*A)[0][2] = 0.0;
+  (*A)[0][3] = 0.0;
+
+  (*A)[1][0] = 0.5;
+  (*A)[1][1] = 0.0;
+  (*A)[1][2] = 0.0;
+  (*A)[1][3] = 0.0;
+
+  (*A)[2][0] = 0.0;
+  (*A)[2][1] = 0.5;
+  (*A)[2][2] = 0.0;
+  (*A)[2][3] = 0.0;
+
+  (*A)[3][0] = 0.0;
+  (*A)[3][1] = 0.0;
+  (*A)[3][2] = 1.0;
+  (*A)[3][3] = 0.0;
+
+  /* initialize b_hat to 0 */
+
+  for (i = 0; i < *s; i++)
+    (*b_hat)[i] = 0.0;
+}
+
+/******************************************************************************/
+
+void SSPRK3(double ***A, double **b, double **b_hat, double **c, int *s,
+            int *ord)
+{
+  /*
+   * Source: S. Gottlieb, D. I. Ketcheson, C.-W. Shu, High Order Strong
+   * Stability Preserving Time Discretizations, J Sci Comput (2009)
+   *  38: 251–289, DOI 10.1007/s10915-008-9239-z
+   */
+
+  int i;
+
+  *s = 3;
+  *ord = 3;
+
+#ifdef HAVE_MPI
+  if (me == 0)
+  {
+#endif
+    printf("Method: SSPRK3 (order %d, %d stages)\n", *ord, *s);
+#ifdef HAVE_MPI
+  }
+#endif
+
+  alloc_emb_rk_method(A, b, b_hat, c, *s);
+
+  (*c)[0] = 0.0;
+  (*c)[1] = 1.0;
+  (*c)[2] = 1.0 / 2.0;
+
+  (*b)[0] = 1.0 / 6.0;
+  (*b)[1] = 1.0 / 6.0;
+  (*b)[2] = 2.0 / 3.0;
+
+  (*A)[0][0] = 0.0;
+  (*A)[0][1] = 0.0;
+  (*A)[0][2] = 0.0;
+
+  (*A)[1][0] = 1.0;
+  (*A)[1][1] = 0.0;
+  (*A)[1][2] = 0.0;
+
+  (*A)[2][0] = 1.0 / 4.0;
+  (*A)[2][1] = 1.0 / 4.0;
+  (*A)[2][2] = 0.0;
+
+  /* initialize b_hat to 0 */
+
+  for (i = 0; i < *s; i++)
+    (*b_hat)[i] = 0.0;
+}
+
+/******************************************************************************/
+
 void RKF23(double ***A, double **b, double **b_hat, double **c, int *s,
            int *ord)
 {
@@ -115,7 +276,8 @@ void DOPRI54(double ***A, double **b, double **b_hat, double **c, int *s,
   /*
    * Sources:
    * - E. Hairer, S.P. Norsett, G. Wanner, Solving Ordinary Differential
-   *   Equations I -- Nonstiff Problems, 2nd rev. ed., Springer 2000, p. 178
+   *   Equations I -- Nonstiff Problems, 2nd rev. ed., 3rd pr., Springer 2008,
+   *   p. 178
    * - J.C. Butcher, Numerical Methods for Ordinary Differential Equations,
    *   2nd. ed., Wiley 2008, p. 211
    */

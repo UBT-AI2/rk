@@ -250,7 +250,7 @@ void solver(double t0, double te, double *y0, double *y, double tol)
     MPI_Allreduce(&my_err_max, &err_max, 1, MPI_DOUBLE, MPI_MAX,
                   MPI_COMM_WORLD);
 
-    if (err_max <= tol)
+    if (err_max <= tol || tol <= 0.0)
     {
       /* if the step was accepted, we have to send s blocks of y to
          the predecessor */

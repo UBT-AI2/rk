@@ -52,11 +52,11 @@
 #endif
 
 #ifndef T_END
-#define T_END                   0.5
+#define T_END                   0.1
 #endif
 
 /*
- * Tolerance of the stepsize controller
+ * Tolerance of the stepsize controller (0.0 for fixed step size, i.e. no step control)
  */
 
 #ifndef TOL
@@ -72,7 +72,13 @@
 #endif
 
 /*
- * Available Methods:
+ * Available fixed-stepsize methods:
+ *
+ *   HEUN2
+ *   RK4
+ *   SSPRK3
+ *
+ * Available variable-stepsize methods:
  * 
  *   RKF23
  *   DOPRI54

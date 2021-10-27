@@ -86,15 +86,34 @@ void premult(double h, double **A, double *b, double *b_hat, double *c,
              double **hA, double *hb, double *hb_hat, double *hc, int s);
 
 /******************************************************************************/
-/* Embedded RK methods                                                        */
+/* RK methods                                                                 */
 /******************************************************************************/
 
-typedef void (emb_rk_method_t) (double ***A, double **b, double **b_hat,
-                                double **c, int *s, int *ord);
+typedef void (rk_method_t) (double ***A, double **b, double **b_hat,
+                            double **c, int *s, int *ord);
 
-emb_rk_method_t RKF23;          /* s =  3, ord = 2 */
-emb_rk_method_t DOPRI54;        /* s =  7, ord = 5 */
-emb_rk_method_t DOPRI87;        /* s = 13, ord = 8 */
+#define HAS_EMB_SOL(MNAME)  _HAS_EMB_SOL(MNAME)
+#define _HAS_EMB_SOL(MNAME) HAS_EMB_SOL_ ## MNAME()
+
+/* fixed stepsize */
+
+rk_method_t HEUN2;              /* s =  2, ord = 2 */
+rk_method_t RK4;                /* s =  4, ord = 4 */
+rk_method_t SSPRK3;             /* s =  3, ord = 3 */
+
+#define HAS_EMB_SOL_HEUN2()   0
+#define HAS_EMB_SOL_RK4()     0
+#define HAS_EMB_SOL_SSPRK3()  0
+
+/* variable stepsize */
+
+rk_method_t RKF23;              /* s =  3, ord = 2 */
+rk_method_t DOPRI54;            /* s =  7, ord = 5 */
+rk_method_t DOPRI87;            /* s = 13, ord = 8 */
+
+#define HAS_EMB_SOL_RKF23()   1
+#define HAS_EMB_SOL_DOPRI54() 1
+#define HAS_EMB_SOL_DOPRI87() 1
 
 /******************************************************************************/
 

@@ -25,7 +25,14 @@
 double initial_stepsize(double t0, double H, const double *y_0, int ord,
                         double tol)
 {
-  return fmin(10.0 * tol, H);
+  double h;
+#ifdef H_INIT
+  h = H_INIT;
+#else
+  h = tol > 0.0 ? fmin(10.0 * tol, H / (STEP_LIMIT)) : H / (STEP_LIMIT);
+#endif
+  printf("Initial step size: %.e\n", h);
+  return h;
 }
 
 /******************************************************************************/

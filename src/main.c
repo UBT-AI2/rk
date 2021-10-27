@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
   int i;
   double timer;
   char *env_threads;
+  double tol = HAS_EMB_SOL(METHOD) ? TOL : 0.0;
 
 #ifdef HAVE_MPI
   MPI_Init(&argc, &argv);
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
     printf("Integration interval: [%.2e,%.2e]\n", T_START, T_END);
     printf("Initial value: y0[0] = %e, ..., y0[%d] = %e; min = %e, max = %e\n",
            y_0[0], ode_size - 1, y_0[ode_size - 1], min, max);
-    printf("Tolerance: %.2e\n", TOL);
+    printf("Tolerance: %.2e\n", tol);
 
 #if LOCKTYPE == SPINLOCK
     printf("Lock type: spin\n");
@@ -88,7 +89,7 @@ int main(int argc, char *argv[])
 #endif
 
   timer_start(&timer);
-  solver(T_START, T_END, y_0, y, TOL);
+  solver(T_START, T_END, y_0, y, tol);
   timer_stop(&timer);
 
 #ifdef HAVE_MPI

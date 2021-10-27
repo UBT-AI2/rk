@@ -37,16 +37,16 @@ GetOptions(
 
 if ($want_help)
 {
-  print STDERR "Usage: ", basename($0), " [--head] [< logfile] [> tabfile]\n";
+  print STDERR "Usage: ", basename($0), " [--head] [--pmd] [< logfile] [> tabfile]\n";
   exit(1);
 }
 
 my @cols = qw( problem n alpha t0 te iv_0 iv_nm1 iv_min iv_max tol lock pad
-	       partype impl cores method ord s steps accepted rejected
+	       partype impl cores method ord s h0 steps accepted rejected
 	       kt tps tpcs tt res_0 res_nm1 res_min res_max );
 
 my $p_int = '\d+';
-my $p_float = '\d+\.\d+e[+-]\d+';
+my $p_float = '\d+(\.\d+)?e[+-]\d+';
 my $p_word = '\S+';
 
 my $state = 0;
@@ -61,11 +61,11 @@ if ($want_head)
   if ($want_pmd)
   {
     print "# cols=", scalar @cols, "\n";
-    print "# ", join($sep, @cols);
+    print "# ", join($sep, @cols), "\n";
   }
   else
   {
-    print join($sep, @cols);
+    print join($sep, @cols), "\n";
   }
 }
 
@@ -115,7 +115,7 @@ while (<STDIN>)
   {
     if (/^Integration interval: \[($p_float),($p_float)\]/)
     {
-      print "$1$sep$2$sep";
+      print "$1$sep$3$sep";
       $state = 4;
     }
   }
@@ -123,7 +123,7 @@ while (<STDIN>)
   {
     if (/^Initial value: y0\[0\] = ($p_float), \.\.\., y0\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
     {
-      print "$1$sep$2$sep$3$sep$4$sep";
+      print "$1$sep$3$sep$5$sep$7$sep";
       $state++;
     }
   }
@@ -207,8 +207,22 @@ while (<STDIN>)
       print "$m$sep$4$sep$5$sep";
       $state++;
     }
+    elsif (/^Method: (\S+) \(order ($p_int), ($p_int) stages\)/)
+    {
+      my $m = lc($1);
+      print "$m$sep$2$sep$3$sep";
+      $state++;
+    }
   }
   elsif ($state == 12)
+  {
+    if (/^Initial step size: ($p_float)/)
+    {
+      print "$1$sep";
+      $state++;
+    }
+  }
+  elsif ($state == 13)
   {
     if (/^Number of steps: ($p_int) \(($p_int) accepted, ($p_int) rejected\)/)
     {
@@ -216,17 +230,17 @@ while (<STDIN>)
       $state++;
     }
   }
-  elsif ($state == 13)
+  elsif ($state == 14)
   {
     if (/^Kernel time: ($p_float) s \(($p_float) s per step\)/)
     {
-      $tps = $2;
-      my $tpcs = $2 / $n;
+      $tps = $3;
+      my $tpcs = $3 / $n;
       print "$1$sep$tps$sep$tpcs$sep";
       $state++;
     }
   }
-  elsif ($state == 14)
+  elsif ($state == 15)
   {
     if (/^Total time:\s+($p_float) s/)
     {
@@ -234,11 +248,11 @@ while (<STDIN>)
       $state++;
     }
   }
-  elsif ($state == 15)
+  elsif ($state == 16)
   {
     if (/^Result: y\[0\] = ($p_float), \.\.\., y\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
     {
-      print "$1$sep$2$sep$3$sep$4\n";
+      print "$1$sep$3$sep$5$sep$7\n";
       $state = 0;
     }
   }

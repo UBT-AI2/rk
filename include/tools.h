@@ -220,8 +220,11 @@ double initial_stepsize(double t0, double H, const double *y_0, int ord,
 
 static inline double h_new_acc(double h, double err, double tol, int ord)
 {
-  return h * fmin((AMAX), fmax((AMIN), (ASAF) * pow(tol / err, 1.0
-                                                    / (ord + 1.0))));
+  if (tol <= 0.0)               /* fixed stepsize */
+    return h;
+  else                          /* variable stepsize */
+    return h * fmin((AMAX), fmax((AMIN), (ASAF) * pow(tol / err, 1.0
+                                                      / (ord + 1.0))));
 }
 
 static inline double h_new_rej(double h, double err, double tol, int ord)
@@ -237,12 +240,12 @@ static inline int step_control(double *t, double *h, double err, int ord,
   {
     int i;
     FILE *f;
-    
+
     if (*counter_acc + *counter_rej == 0)
       f = fopen("DUMP", "w");
     else
       f = fopen("DUMP", "a");
-    
+
     fprintf(f, "%.20e\t%.20e", *t, *h);
     for (i = 0; i < n; i++)
       fprintf(f, "\t%.20e", y[i]);
@@ -252,7 +255,13 @@ static inline int step_control(double *t, double *h, double err, int ord,
   }
 #endif
 
-  if (err <= tol)               /* accept */
+  if (tol <= 0.0)               /* fixed step size */
+  {
+    *t += *h;
+    (*counter_acc)++;
+    return 1;
+  }
+  else if (err <= tol)          /* accept */
   {
     *t += *h;
     *h = h_new_acc(*h, err, tol, ord);
