@@ -24,7 +24,7 @@
 # After using this script to run the benchmarks and produce a log file like
 # this
 #
-#  ./benchmark bruss2d-mix example.log
+#   ./benchmark bruss2d-mix example.log
 #
 # You can produce a table for later postprocessing and plotting by
 #
@@ -34,7 +34,7 @@ PROBLEM="$1"
 LOGFILE="$2"
 
 if [ -z "$LOGFILE" ] || [ -z "$PROBLEM" ] ; then
-    echo "Usage: $(basename $0) <logfile> <problem>"
+    echo "Usage: $(basename $0) <problem> <logfile>"
     exit 1
 fi
 
