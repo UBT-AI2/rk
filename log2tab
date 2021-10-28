@@ -49,6 +49,8 @@ my $p_int = '\d+';
 my $p_float = '\d+(\.\d+)?e[+-]\d+';
 my $p_word = '\S+';
 
+my $col = 0;
+my $num_cols = scalar @cols;
 my $state = 0;
 my $linenumber = 0;
 my $parallel;
@@ -60,7 +62,7 @@ if ($want_head)
 {
   if ($want_pmd)
   {
-    print "# cols=", scalar @cols, "\n";
+    print "# cols=", $num_cols, "\n";
     print "# ", join($sep, @cols), "\n";
   }
   else
@@ -73,16 +75,20 @@ while (<STDIN>)
 {
   $linenumber++;
 
-  if ($state == 0)
+  if (/^ODE: ($p_word)/)
   {
-    if (/^ODE: ($p_word)/)
+    $ode = $1;
+    if ($state != 0)
     {
-      $ode = $1;
-      print "$ode$sep";
-      $state++;
+      print "\@$sep" x ($num_cols - $col - 1);
+      print "\@\n";
     }
+    print "$ode$sep";
+    $col = 1;
+    $state = 1;
   }
-  elsif ($state == 1)
+
+  if ($state == 1)
   {
     if ($ode eq "BRUSS2D-MIX")
     {
@@ -90,6 +96,7 @@ while (<STDIN>)
       {
 	$n = 2*$1*$1;
 	print "$n$sep";
+	$col++;
 	$state = 2;
       }
     }
@@ -99,6 +106,7 @@ while (<STDIN>)
       {
 	$n = $2;
 	print "$n${sep}0.0${sep}";
+	$col += 2;
 	$state = 3;
       }
     }
@@ -108,6 +116,7 @@ while (<STDIN>)
     if (/^Alpha: ($p_float)/)
     {
       print "$1$sep";
+      $col++;
       $state++;
     }
   }
@@ -116,6 +125,7 @@ while (<STDIN>)
     if (/^Integration interval: \[($p_float),($p_float)\]/)
     {
       print "$1$sep$3$sep";
+      $col += 2;
       $state = 4;
     }
   }
@@ -124,6 +134,7 @@ while (<STDIN>)
     if (/^Initial value: y0\[0\] = ($p_float), \.\.\., y0\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
     {
       print "$1$sep$3$sep$5$sep$7$sep";
+      $col += 4;
       $state++;
     }
   }
@@ -132,6 +143,7 @@ while (<STDIN>)
     if (/^Tolerance: ($p_float)/)
     {
       print "$1$sep";
+      $col++;
       $state++;
     }
   }
@@ -140,6 +152,7 @@ while (<STDIN>)
     if (/^Lock type: ($p_word)/)
     {
       print "$1$sep";
+      $col++;
       $state++;
     }
   }
@@ -148,6 +161,7 @@ while (<STDIN>)
     if (/^Pad size: ($p_int)/)
     {
       print "$1$sep";
+      $col++;
       $state++;
     }
   }
@@ -161,16 +175,19 @@ while (<STDIN>)
 	if ("$3" eq "shared")
 	{
 	  print "pth$sep";
+	  $col++;
 	}
 	else
 	{
 	  print "mpi$sep";
+	  $col++;
 	}
       }
       else
       {
 	$parallel = 0;
 	print "seq$sep";
+	$col++;
       }
       $state++;
     }
@@ -180,6 +197,7 @@ while (<STDIN>)
     if (/^Implementation variant: ($p_word)/)
     {
       print "$1$sep";
+      $col++;
       if ($parallel)
       {
 	$state++;
@@ -187,6 +205,7 @@ while (<STDIN>)
       else
       {
 	print "1$sep";
+	$col++;
 	$state += 2;
       }
     }
@@ -196,6 +215,7 @@ while (<STDIN>)
     if (/^Number of (threads|MPI processes): ($p_int)/)
     {
       print "$2$sep";
+      $col++;
       $state++;
     }
   }
@@ -205,12 +225,14 @@ while (<STDIN>)
     {
       my $m = lc($1) . $2 . $3;
       print "$m$sep$4$sep$5$sep";
+      $col += 3;
       $state++;
     }
     elsif (/^Method: (\S+) \(order ($p_int), ($p_int) stages\)/)
     {
       my $m = lc($1);
       print "$m$sep$2$sep$3$sep";
+      $col += 3;
       $state++;
     }
   }
@@ -219,6 +241,7 @@ while (<STDIN>)
     if (/^Initial step size: ($p_float)/)
     {
       print "$1$sep";
+      $col++;
       $state++;
     }
   }
@@ -227,6 +250,7 @@ while (<STDIN>)
     if (/^Number of steps: ($p_int) \(($p_int) accepted, ($p_int) rejected\)/)
     {
       print "$1$sep$2$sep$3$sep";
+      $col += 3;
       $state++;
     }
   }
@@ -237,6 +261,7 @@ while (<STDIN>)
       $tps = $3;
       my $tpcs = $3 / $n;
       print "$1$sep$tps$sep$tpcs$sep";
+      $col += 3;
       $state++;
     }
   }
@@ -245,6 +270,7 @@ while (<STDIN>)
     if (/^Total time:\s+($p_float) s/)
     {
       print "$1$sep";
+      $col++;
       $state++;
     }
   }
@@ -253,6 +279,7 @@ while (<STDIN>)
     if (/^Result: y\[0\] = ($p_float), \.\.\., y\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
     {
       print "$1$sep$3$sep$5$sep$7\n";
+      $col = 0;
       $state = 0;
     }
   }
