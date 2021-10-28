@@ -24,34 +24,35 @@ use File::Basename;
 use Getopt::Long;
 
 my $want_head = 0;
-my $want_pmd = 0;
+my $want_pmd  = 0;
 my $want_help = 0;
-my $sep = ',';
+my $sep       = ',';
 
 GetOptions(
-	   'separator=s' => \$sep,
-	   'head' => \$want_head,
-	   'pmd' => sub { $want_pmd = 1; $sep = "\t"; },
-	   'help|?' => \$want_help,
-	  );
+  'separator=s' => \$sep,
+  'head'        => \$want_head,
+  'pmd'         => sub { $want_pmd = 1; $sep = "\t"; },
+  'help|?'      => \$want_help,
+);
 
 if ($want_help)
 {
-  print STDERR "Usage: ", basename($0), " [--head] [--pmd] [< logfile] [> tabfile]\n";
+  print STDERR "Usage: ", basename($0),
+    " [--head] [--pmd] [< logfile] [> tabfile]\n";
   exit(1);
 }
 
 my @cols = qw( problem n alpha t0 te iv_0 iv_nm1 iv_min iv_max tol lock pad
-	       partype impl cores method ord s h0 steps accepted rejected
-	       kt tps tpcs tt res_0 res_nm1 res_min res_max );
+  partype impl cores method ord s h0 steps accepted rejected
+  kt tps tpcs tt res_0 res_nm1 res_min res_max );
 
-my $p_int = '\d+';
+my $p_int   = '\d+';
 my $p_float = '\d+(\.\d+)?e[+-]\d+';
-my $p_word = '\S+';
+my $p_word  = '\S+';
 
-my $col = 0;
-my $num_cols = scalar @cols;
-my $state = 0;
+my $col        = 0;
+my $num_cols   = scalar @cols;
+my $state      = 0;
 my $linenumber = 0;
 my $parallel;
 my $ode;
@@ -84,7 +85,7 @@ while (<STDIN>)
       print "\@\n";
     }
     print "$ode$sep";
-    $col = 1;
+    $col   = 1;
     $state = 1;
   }
 
@@ -94,20 +95,20 @@ while (<STDIN>)
     {
       if (/^Grid size: ($p_int)/)
       {
-	$n = 2*$1*$1;
-	print "$n$sep";
-	$col++;
-	$state = 2;
+        $n = 2 * $1 * $1;
+        print "$n$sep";
+        $col++;
+        $state = 2;
       }
     }
     else
     {
       if (/^(Problem|System) size: ($p_int)/)
       {
-	$n = $2;
-	print "$n${sep}0.0${sep}";
-	$col += 2;
-	$state = 3;
+        $n = $2;
+        print "$n${sep}0.0${sep}";
+        $col += 2;
+        $state = 3;
       }
     }
   }
@@ -131,7 +132,10 @@ while (<STDIN>)
   }
   elsif ($state == 4)
   {
-    if (/^Initial value: y0\[0\] = ($p_float), \.\.\., y0\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
+    my $p =
+        "^Initial value: y0\[0\] = ($p_float), \.\.\., y0\[\d+\] = ($p_float); "
+      . "min = ($p_float), max = ($p_float)";
+    if (/$p/)
     {
       print "$1$sep$3$sep$5$sep$7$sep";
       $col += 4;
@@ -167,27 +171,29 @@ while (<STDIN>)
   }
   elsif ($state == 8)
   {
-    if (/^Solver type: ($p_word) embedded Runge-Kutta method( for ($p_word) address space)?/)
+    my $p = "^Solver type: ($p_word) embedded Runge-Kutta method"
+      . "( for ($p_word) address space)?";
+    if (/$p/)
     {
       if ("$1" eq "parallel")
       {
-	$parallel = 1;
-	if ("$3" eq "shared")
-	{
-	  print "pth$sep";
-	  $col++;
-	}
-	else
-	{
-	  print "mpi$sep";
-	  $col++;
-	}
+        $parallel = 1;
+        if ("$3" eq "shared")
+        {
+          print "pth$sep";
+          $col++;
+        }
+        else
+        {
+          print "mpi$sep";
+          $col++;
+        }
       }
       else
       {
-	$parallel = 0;
-	print "seq$sep";
-	$col++;
+        $parallel = 0;
+        print "seq$sep";
+        $col++;
       }
       $state++;
     }
@@ -200,13 +206,13 @@ while (<STDIN>)
       $col++;
       if ($parallel)
       {
-	$state++;
+        $state++;
       }
       else
       {
-	print "1$sep";
-	$col++;
-	$state += 2;
+        print "1$sep";
+        $col++;
+        $state += 2;
       }
     }
   }
@@ -276,10 +282,12 @@ while (<STDIN>)
   }
   elsif ($state == 16)
   {
-    if (/^Result: y\[0\] = ($p_float), \.\.\., y\[\d+\] = ($p_float); min = ($p_float), max = ($p_float)/)
+    my $p = "^Result: y\[0\] = ($p_float), \.\.\., y\[\d+\] = ($p_float);"
+      . " min = ($p_float), max = ($p_float)";
+    if (/$p/)
     {
       print "$1$sep$3$sep$5$sep$7\n";
-      $col = 0;
+      $col   = 0;
       $state = 0;
     }
   }
