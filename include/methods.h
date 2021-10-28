@@ -109,11 +109,13 @@ rk_method_t SSPRK3;             /* s =  3, ord = 3 */
 
 rk_method_t RKF23;              /* s =  3, ord = 2 */
 rk_method_t DOPRI54;            /* s =  7, ord = 5 */
+rk_method_t VERNER65;           /* s =  8, ord = 6 */
 rk_method_t DOPRI87;            /* s = 13, ord = 8 */
 
-#define HAS_EMB_SOL_RKF23()   1
-#define HAS_EMB_SOL_DOPRI54() 1
-#define HAS_EMB_SOL_DOPRI87() 1
+#define HAS_EMB_SOL_RKF23()    1
+#define HAS_EMB_SOL_DOPRI54()  1
+#define HAS_EMB_SOL_VERNER65() 1
+#define HAS_EMB_SOL_DOPRI87()  1
 
 /******************************************************************************/
 
