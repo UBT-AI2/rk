@@ -1,3 +1,90 @@
+2021-11-01  Matthias Korch  <korch@uni-bayreuth.de>
+
+	Update copyright year to 2021.
+
+	Updated documentation.
+
+	* README.md
+
+	Improvements of build process.
+
+	* .depend: Omit system includes such as mpi.h
+	* bin/.force_tracking: Ensure that the bin directory exists when
+	the repo is cloned.
+	* Makefile: Allow to overwrite compiler and config.
+	* Makefile: Changed order of implementations for "make check" and
+	"make time".
+
+	Improved output, debugging and benchmarking.
+
+	* src/main.c: Result output with more digits.
+	* include/tools.h (step_control) [DUMP]: Save current solution
+	vector in step_control().
+	* log2tab: Parses text output and produces CSV table for further
+	processing.
+	* benchmark: Demo script for automating measurement series.
+
+	New implementations F and Fblock.
+
+	* src/impl/*/F.c
+	* src/impl/*/Fblock.c
+
+	New test problem LV (multiple Lotka-Volterra equations).
+
+	* include/config.h
+	* src/problems/lv.c
+
+	New embedded RK method by Verner (VERNER65).
+
+	* include/methods.h
+	* src/methods.c (VERNER65)
+
+	Added several non-embedded (fixed-step-size) methods (HEUN2, RK4,
+	SSPRK3).
+
+	* include/config.h: Comments and T_END.
+	* include/methods.h: Prototypes.
+	* include/tools.h (h_new_acc, step_control): Handle fixed step
+	size case (tol <= 0.0).
+	* src/main.c: Decide and pass right value of tol.
+	* src/methods.c (HEUN2, RK4, SSPRK3): Initialization of method
+	coefficients.
+	* src/tools.c (initial_stepsize): Suitable initial step size.
+	* src/impl/mpi/PipeD2.c: Same communication as for accepted steps.
+	* log2tab: Updated patterns. Included initial step size as column
+	h0.
+
+	Improved structure of implementations.
+
+	* src/impl/*/E.c: Sourced out kernels to block-inline.h.
+	Also renamed calls in src/impl/*/A.c.
+
+	Performance improvement I: Inner tiling.
+
+	* src/impl/*/PipeD*.c
+
+	Performance improvement II: ode_eval_range()
+
+	* include/block-inline.h (block_rhs, tiled_block*)
+	* include/ode.h (ode_eval_rng)
+	* src/problems/bruss2d-mix.c (ode_eval_rng)
+
+	Performance improvement III: Exploit method coefficients equal to
+	0.0.
+
+	* include/block-inline.h
+	* include/methods.h (alloc_zero_pattern, free_zero_pattern, zero_pattern)
+	* src/methods.c (zero_pattern)
+	All relevant implementations changed.
+
+	Performance improvement IV; Premultiplication of coefficients by
+	step size.
+
+	* include/block-inline.h
+	* include/methods.h (premult)
+	* src/methods.c (premult)
+	All relevant implementations changed.
+
 2020-02-26  Matthias Korch  <korch@uni-bayreuth.de>
 
 	Release on Github.
