@@ -2,23 +2,27 @@ Contents
 ========
 
 This collection contains a set of sequential and parallel implementations of
-embedded Runge-Kutta solvers.  These implementations are related to the ones
+(embedded) Runge-Kutta solvers.  These implementations are related to the ones
 discussed in
 
 1. Matthias Korch and Thomas Rauber. Optimizing locality and scalability of
    embedded Runge-Kutta solvers using block-based pipelining. _Journal of
-   Parallel and Distributed Computing_, 66(3):444–468, 2006.  
+   Parallel and Distributed Computing_, 66(3):444–468, 2006.
    DOI: [10.1016/j.jpdc.2005.09.003](https://doi.org/10.1016/j.jpdc.2005.09.003)
 
 2. Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge-Kutta Solvers
    for ODE Systems with Limited Access Distance. _International Journal of High
-   Performance Computing Applications_, 25(2):236-255, 2011.  
+   Performance Computing Applications_, 25(2):236-255, 2011.
    DOI: [10.1177/1094342010384418](https://doi.org/10.1177/1094342010384418)
 
 3. Matthias Korch and Thomas Rauber. _Parallel Low-Storage Runge-Kutta Solvers
    for ODE Systems with Limited Access Distance_. Bayreuth Reports on Parallel
-   and Distributed Systems, No. 1, University of Bayreuth, July 2010.  
+   and Distributed Systems, No. 1, University of Bayreuth, July 2010.
    URN: [urn:nbn:de:bvb:703-opus-7136](http://nbn-resolving.org/urn:nbn:de:bvb:703-opus-7136)
+
+Since the publication of those articles, new implementations and performance
+improvements have been added, as well as additional method tables (including
+fixed step size) and other features.
 
 The following implementations are part of this collection:
 
@@ -34,12 +38,18 @@ Sequential implementations
 - `src/impl/seq/D.c`
 
   * suitable for general ODE systems
-  * loop structure exploits temporal locality of reads
+  * loop structure exploits temporal locality of reads (fused right hand side)
 
 - `src/impl/seq/E.c`
 
   * suitable for general ODE systems
   * loop structure exploits temporal locality of writes
+
+- `src/impl/seq/F.c`
+
+  * suitable for general ODE systems
+  * loop structure exploits temporal locality of writes (fused right hand
+    side)
 
 - `src/impl/seq/Dblock.c`
 
@@ -50,6 +60,12 @@ Sequential implementations
 
   * suitable for general ODE systems
   * loop structure exploits temporal locality of writes and spatial locality
+
+- `src/impl/seq/Fblock.c`
+
+  * suitable for general ODE systems
+  * loop structure exploits temporal locality of writes and spatial locality
+    (fused right hand side)
 
 - `src/impl/seq/PipeD.c`
 
@@ -86,6 +102,14 @@ Parallel implementations for shared address space
   * shared data structures
   * barrier synchronization between the stages
 
+- `src/impl/seq/F.c`
+
+  * suitable for general ODE systems
+  * loop structure exploits temporal locality of writes (fused right hand
+    side)
+  * shared data structures
+  * barrier synchronization between the stages
+
 - `src/impl/pthreads/Dblock.c`
 
   * suitable for general ODE systems
@@ -97,6 +121,14 @@ Parallel implementations for shared address space
 
   * suitable for general ODE systems
   * loop structure exploits temporal locality of writes and spatial locality
+  * shared data structures
+  * barrier synchronization between the stages
+
+- `src/impl/seq/Fblock.c`
+
+  * suitable for general ODE systems
+  * loop structure exploits temporal locality of writes and spatial locality
+    (fused right hand side)
   * shared data structures
   * barrier synchronization between the stages
 
@@ -169,6 +201,13 @@ Parallel implementations for distributed address space
   * loop structure exploits temporal locality of writes
   * multibroadcast operations (`MPI_Allgatherv`) between the stages
 
+- `src/impl/seq/F.c`
+
+  * suitable for general ODE systems
+  * loop structure exploits temporal locality of writes (fused right hand
+    side)
+  * multibroadcast operations (`MPI_Allgatherv`) between the stages
+
 - `src/impl/mpi/Dblock.c`
 
   * suitable for general ODE systems
@@ -179,6 +218,13 @@ Parallel implementations for distributed address space
 
   * suitable for general ODE systems
   * loop structure exploits temporal locality of writes and spatial locality
+  * multibroadcast operations (`MPI_Allgatherv`) between the stages
+
+- `src/impl/seq/Fblock.c`
+
+  * suitable for general ODE systems
+  * loop structure exploits temporal locality of writes and spatial locality
+    (fused right hand side)
   * multibroadcast operations (`MPI_Allgatherv`) between the stages
 
 - `src/impl/mpi/Dbc.c`
@@ -253,8 +299,14 @@ Configuration of parameters
 ===========================
 
 Some parameters can be changed by editing the file `include/config.h`. See the
-comments in that file for details.
+comments in that file for details. 
 
+You can also overwrite the settings in `include/config.h` by using the make
+variable `DEFINES`, e.g.,
+
+    > make DEFINES="PROBLEM=LV METHOD=VERNER65"
+
+But don't forget to `make clean` first.
 
 Compiling
 =========
@@ -313,9 +365,11 @@ will run all implementations and print the kernel time of each per screen row.
 Coding style
 ============
 
-All source codes should be formatted with GNU indent using the options in the
-included `.indent.pro` file before commit. You can run `make indent` to format
-all source codes.
+All C source codes should be formatted with GNU indent using the options in
+the included `.indent.pro` file before commit. Similarly, Perl source codes
+should be formatted with perltidy using the options in the included
+`perltidy.conf` file before commit. You can run `make indent` to format all
+source codes.
 
 
 License
@@ -327,10 +381,10 @@ GPL version 3 or later. Please see `COPYING` for details.
 Contact
 =======
 
-PD Dr. Matthias Korch  
-Department of Computer Science  
-University of Bayreuth  
-95440 Bayreuth  
+Prof. Dr. Matthias Korch
+Department of Computer Science
+University of Bayreuth
+95440 Bayreuth
 Germany
 
 E-Mail: korch@uni-bayreuth.de
