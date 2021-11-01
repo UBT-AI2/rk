@@ -35,6 +35,8 @@ SEQDIR  	= $(SRCDIR)/impl/$(PREFIX_SEQ)
 PTHDIR  	= $(SRCDIR)/impl/$(PREFIX_PTH)
 MPIDIR  	= $(SRCDIR)/impl/$(PREFIX_MPI)
 
+PERL_SOURCES 	= log2tab
+
 DEPFILE         = .depend
 
 CORES           = 4
@@ -198,6 +200,9 @@ done
 .PHONY:	indent
 indent:
 	indent $(HEADERS) $(ALL_SOURCES)
+	for i in $(PERL_SOURCES) ; do \
+  perltidy -pro=perltidy.conf $${i} && mv $${i}.tdy $${i} ; \
+done
 
 ################################################################################
 
