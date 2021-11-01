@@ -7,17 +7,17 @@ discussed in
 
 1. Matthias Korch and Thomas Rauber. Optimizing locality and scalability of
    embedded Runge-Kutta solvers using block-based pipelining. _Journal of
-   Parallel and Distributed Computing_, 66(3):444–468, 2006.
+   Parallel and Distributed Computing_, 66(3):444–468, 2006.  
    DOI: [10.1016/j.jpdc.2005.09.003](https://doi.org/10.1016/j.jpdc.2005.09.003)
 
 2. Matthias Korch and Thomas Rauber. Parallel Low-Storage Runge-Kutta Solvers
    for ODE Systems with Limited Access Distance. _International Journal of High
-   Performance Computing Applications_, 25(2):236-255, 2011.
+   Performance Computing Applications_, 25(2):236-255, 2011.  
    DOI: [10.1177/1094342010384418](https://doi.org/10.1177/1094342010384418)
 
 3. Matthias Korch and Thomas Rauber. _Parallel Low-Storage Runge-Kutta Solvers
    for ODE Systems with Limited Access Distance_. Bayreuth Reports on Parallel
-   and Distributed Systems, No. 1, University of Bayreuth, July 2010.
+   and Distributed Systems, No. 1, University of Bayreuth, July 2010.  
    URN: [urn:nbn:de:bvb:703-opus-7136](http://nbn-resolving.org/urn:nbn:de:bvb:703-opus-7136)
 
 Since the publication of those articles, new implementations and performance
@@ -381,10 +381,10 @@ GPL version 3 or later. Please see `COPYING` for details.
 Contact
 =======
 
-Prof. Dr. Matthias Korch
-Department of Computer Science
-University of Bayreuth
-95440 Bayreuth
+Prof. Dr. Matthias Korch  
+Department of Computer Science  
+University of Bayreuth  
+95440 Bayreuth  
 Germany
 
 E-Mail: korch@uni-bayreuth.de
